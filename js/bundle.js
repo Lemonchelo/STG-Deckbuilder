@@ -727,12 +727,16 @@ function escapeHtml(value) {
 
   function getActiveFactionsInDeck() {
     const factions = new Set();
-    state.deck.forEach(item => {
-      const card = getCardById(item.cardId);
-      if (card && card.element && card.element !== 'neutral') {
-        factions.add(card.element.toLowerCase());
-      }
-    });
+    const addFactionsFrom = (deckArr) => {
+      deckArr.forEach(item => {
+        const card = getCardById(item.cardId);
+        if (card && card.element && card.element !== 'neutral') {
+          factions.add(card.element.toLowerCase());
+        }
+      });
+    };
+    addFactionsFrom(state.deck);
+    addFactionsFrom(state.sideDeck);
     return factions;
   }
 

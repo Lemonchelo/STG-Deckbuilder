@@ -376,19 +376,25 @@ export function setDeckName(name) {
 /**
  * Returns a Set of planet/faction keys currently present in the main deck
  */
+/** Active factions across Main Deck + Side Deck: both feed the automatic Extra Deck (Tokens). */
 export function getActiveFactionsInDeck() {
   const factions = new Set();
-  state.deck.forEach(item => {
-    const card = getCardById(item.cardId);
-    if (card && card.element && card.element !== 'neutral') {
-      factions.add(card.element.toLowerCase());
-    }
-  });
+  const addFactionsFrom = (deckArr) => {
+    deckArr.forEach(item => {
+      const card = getCardById(item.cardId);
+      if (card && card.element && card.element !== 'neutral') {
+        factions.add(card.element.toLowerCase());
+      }
+    });
+  };
+  addFactionsFrom(state.deck);
+  addFactionsFrom(state.sideDeck);
   return factions;
 }
 
 /**
- * Automatically computes the Extra Deck (Tokens) based on active factions in main deck
+ * Automatically computes the Extra Deck (Tokens) based on active factions in
+ * Main Deck + Side Deck combined
  */
 export function getActiveExtraDeckTokens() {
   const activeFactions = getActiveFactionsInDeck();
