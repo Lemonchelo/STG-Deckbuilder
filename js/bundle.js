@@ -3068,20 +3068,82 @@ function initCardInspector() {
   }
 
   /** Loads whatever the base pool already has cached; called once on app startup, no folder access needed. */
-  function initPoolCards() {
-    return openDB()
-      .then(loadSavedPoolCards)
-      .then(cards => {
-        cards.forEach(card => {
-          if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
-        });
-        return cards;
-      })
-      .catch(() => []);
+  async function initPoolCards() {
+    let cachedCards = [];
+    try {
+      cachedCards = await openDB().then(loadSavedPoolCards);
+    } catch (err) {
+      cachedCards = [];
+    }
+    cachedCards.forEach(card => {
+      if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
+    });
+
+    await loadPoolFromServer();
+
+    return CARDS_DATA.filter(c => c.isPool);
   }
 
   function isPoolUpdateSupported() {
     return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+  }
+
+  // ── Server-side loading (works on GitHub Pages, Netlify, any HTTP host, and on
+  //    phones/browsers without showDirectoryPicker) ─────────────────────────────
+  const MANIFEST_PATH = 'cartas/pool-manifest.json';
+  const CATALOG_PATH = 'cartas/catalogo-original.json';
+
+  async function fetchJSON(path) {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  /** Same shape as readCatalog(dirHandle), but fetched over HTTP instead of read from a picked folder. */
+  async function loadCatalogFromServer() {
+    try {
+      const parsed = await fetchJSON(CATALOG_PATH);
+      const list = Array.isArray(parsed) ? parsed : (parsed.cards || []);
+      const map = new Map();
+      for (const entry of list) {
+        if (entry && typeof entry.archivo === 'string') {
+          map.set(entry.archivo.replace(/\\/g, '/'), entry);
+        }
+      }
+      return map;
+    } catch (err) {
+      return new Map(); // optional file: filename-only parsing still works without it
+    }
+  }
+
+  /**
+   * Builds the base pool from cartas/pool-manifest.json + the images already
+   * committed alongside the app, referencing each image by its plain relative URL
+   * (no download, no base64 conversion — the browser only fetches an image once it
+   * actually scrolls into view, same as any other <img loading="lazy">).
+   * Silently does nothing if the manifest can't be fetched: opened via file://,
+   * running on a host that doesn't serve cartas/, or the manifest doesn't exist yet.
+   */
+  async function loadPoolFromServer() {
+    let manifest;
+    try {
+      manifest = await fetchJSON(MANIFEST_PATH);
+    } catch (err) {
+      return; // no manifest reachable: nothing to do, the folder-picker flow still works
+    }
+    if (!Array.isArray(manifest) || manifest.length === 0) return;
+
+    const catalog = await loadCatalogFromServer();
+    const known = new Set(CARDS_DATA.map(c => c.id));
+
+    for (const relPath of manifest) {
+      const id = 'pool_' + hashPath(relPath);
+      if (known.has(id)) continue;
+      const imageUrl = 'cartas/' + relPath;
+      const card = parsePoolCardFromPath(relPath, imageUrl, catalog.get(relPath));
+      CARDS_DATA.push(card);
+      known.add(card.id);
+    }
   }
 
   // ── Deterministic ids ─────────────────────────────────────────────────────────

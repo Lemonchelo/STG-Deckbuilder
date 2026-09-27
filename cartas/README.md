@@ -4,6 +4,12 @@
 
 En la aplicación, seleccioná **Importar Cartas → Seleccionar Carpeta** y elegí esta carpeta `cartas`. El importador recorre sus subcarpetas e ignora los archivos JSON y Markdown. Las cartas se guardan en el navegador después de importarlas. Una imagen ya importada con el mismo nombre, tipo y facción se omite; los duplicados históricos no se eliminan automáticamente.
 
+## Pool base servida por HTTP (`pool-manifest.json`)
+
+`pool-manifest.json` es una lista plana de las rutas de imagen relativas a esta carpeta. `js/poolManager.js` la lee con `fetch()` al arrancar la app para armar la pool base sin pedirle a nadie que elija una carpeta — así funciona en GitHub Pages, Netlify, un servidor local o el navegador de un celular (donde `showDirectoryPicker` no existe). Si abrís `index.html` con `file://`, el `fetch()` falla silenciosamente y la pool queda vacía hasta usar "Buscar Actualizaciones" (requiere Chrome o Edge de escritorio).
+
+Después de agregar o sacar imágenes de `SET-N/`, corré `node tests/generate-pool-manifest.cjs` y commiteá el `pool-manifest.json` actualizado junto con las imágenes. Si te olvidás, la app servida por HTTP sigue mostrando la pool anterior — nada se rompe, pero las cartas nuevas no aparecen hasta regenerarlo.
+
 ## Formatos
 
 - 438 cartas estándar: `Nombre_Tipo_Rareza_Faccion_ATK_DEF_Coste.webp`. El coste es el total de sellos de facción más coste neutral.
