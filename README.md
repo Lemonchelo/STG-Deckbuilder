@@ -1,6 +1,6 @@
 # STG TCG Deckbuilder
 
-Constructor de mazos para un TCG con **facciones planetarias**, cartas **Sello** (recursos) y un **Mazo Extra de Tokens** que se genera solo. Funciona 100 % en el navegador, sin dependencias ni backend: tus cartas se importan desde tus propias imágenes y todo se guarda localmente.
+Deckbuilder personalizado para el TCG Argentino "Rise of Gods".
 
 ## Contenido
 
