@@ -346,6 +346,57 @@
   .inspector-nav-next { right: 6px; }
 }
 
+/* ── Inspector: layout vertical en pantallas angostas (mobile) ───────────────
+   Solo aplica bajo el corte mobile del proyecto (760px, ver rog-theme.css);
+   por encima de eso el inspector queda exactamente como antes.
+   Orden visual: carta -> destino (Principal/Side) -> Agregar/Quitar -> detalles.
+   Las flechas prev/next siguen a los costados, en gutters propios fuera del
+   diálogo. Se usa display: contents en la columna de detalles para poder
+   reordenar sus hijos sin tocar el HTML que genera cardInspector.js. */
+@media (max-width: 760px) {
+  #modal-card-inspector { padding: 12px 48px; }
+
+  .modal-dialog.modal-inspector {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    padding-top: 44px; /* franja del botón cerrar; el scroll queda debajo */
+  }
+
+  .modal-dialog.modal-inspector .inspector-content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 14px 16px;
+  }
+
+  .inspector-card-col .tcg-card-wrapper {
+    width: min(300px, 100%);
+    /* que carta + botones entren juntos en pantallas bajas */
+    width: min(300px, 100%, calc((100dvh - 250px) * 5 / 7));
+  }
+  .inspector-card-col .tcg-card { width: 100%; }
+
+  .inspector-details-col { display: contents; }
+
+  .inspector-card-col     { order: 1; }
+  .inspector-target-toggle { order: 2; margin-top: 0; }
+  .inspector-actions      { order: 3; margin-top: 0; flex-direction: column; align-items: stretch; }
+  .inspector-name         { order: 4; }
+  .inspector-meta-row     { order: 5; }
+  .inspector-desc-box     { order: 6; }
+  .inspector-flavor       { order: 7; }
+
+  /* Agregar arriba de Quitar, y objetivos táctiles cómodos */
+  .inspector-actions .btn-primary { order: -1; }
+  .inspector-actions .btn,
+  .target-toggle-btn { min-height: 40px; }
+}
+
 /* ==========================================================================
    TEST HAND SIMULATOR MODAL
    ========================================================================== */
