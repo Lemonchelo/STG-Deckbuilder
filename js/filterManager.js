@@ -6,7 +6,7 @@
 import { CARDS_DATA } from './cardsData.js';
 import { state, setCardScale, setFilter, resetFilters, addCardToDeck, canAddCardToDeck, getCombinedCardCount, getMaxAllowedCopies, isCardBanlisted, getDeckTotalCount } from './state.js';
 import { createCardElement, openCardInspector } from './cardInspector.js';
-import { playClick, playCardDrop } from './sound.js';
+import { playClick, playCardAddSfx } from './sound.js';
 import { showToast } from './app.js';
 
 export function initFilters() {
@@ -154,7 +154,7 @@ export function initFilters() {
       const check = canAddCardToDeck(cardId, target);
       if (check.allowed) {
         addCardToDeck(cardId, target);
-        playCardDrop();
+        playCardAddSfx();
         const card = CARDS_DATA.find(c => c.id === cardId);
         showToast(`Agregado: ${card ? card.name : 'Carta'} al ${target === 'side' ? 'Side Deck' : 'mazo'}`, 'success');
       } else {

@@ -26,6 +26,7 @@ export function isSoundEnabled() {
 export function toggleSound() {
   soundEnabled = !soundEnabled;
   localStorage.setItem('aetherium_sound_enabled', JSON.stringify(soundEnabled));
+  if (soundEnabled) startMusic(); else pauseMusic();
   return soundEnabled;
 }
 
@@ -177,4 +178,157 @@ export function playShuffle() {
     osc.start(startTime);
     osc.stop(startTime + 0.04);
   }
+}
+
+// ==================== ARCHIVOS DE AUDIO (snd/bgm y snd/sfx) ====================
+// Igual que cartas/pool-manifest.json: GitHub Pages no lista carpetas, así que los
+// nombres salen de snd/sound-manifest.json ({ "bgm": [...], "sfx": [...] }), que se
+// regenera con `node tests/generate-sound-manifest.cjs` tras sumar o sacar archivos.
+// Sin manifest (file://, host sin snd/) no pasa nada: no hay música y los efectos
+// vuelven a los sonidos sintetizados de arriba.
+const SOUND_MANIFEST_PATH = 'snd/sound-manifest.json';
+const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg)$/i;
+const AUDIO_LOAD_TIMEOUT_MS = 8000;
+const BGM_VOLUME = 0.3;   // 0 a 1
+const SFX_VOLUME = 0.7;   // 0 a 1
+const GESTURE_EVENTS = ['pointerdown', 'pointerup', 'keydown', 'touchend'];
+
+let bgmCandidates = [];   // URLs de snd/bgm listadas en el manifest
+let sfxPlayable = [];     // URLs de snd/sfx que el navegador pudo cargar
+let bgmAudio = null;      // pista elegida (en loop)
+let bgmLoading = false;
+let bgmWaitingForGesture = false;
+
+function audioUrl(folder, name) {
+  return 'snd/' + folder + '/' + name.split('/').map(encodeURIComponent).join('/');
+}
+
+function shuffled(list) {
+  const copy = list.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Resuelve con el elemento <audio> si el archivo carga (existe y es decodificable), o con null.
+function probeAudio(url) {
+  return new Promise((resolve) => {
+    const audio = new Audio();
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(ok ? audio : null);
+    };
+    const timer = setTimeout(() => finish(false), AUDIO_LOAD_TIMEOUT_MS);
+    audio.addEventListener('loadedmetadata', () => finish(true), { once: true });
+    audio.addEventListener('error', () => finish(false), { once: true });
+    audio.preload = 'auto';
+    audio.src = url;
+  });
+}
+
+async function fetchSoundManifest() {
+  try {
+    const res = await fetch(SOUND_MANIFEST_PATH, { cache: 'no-cache' });
+    if (!res.ok) return null;
+    const manifest = await res.json();
+    return manifest && typeof manifest === 'object' ? manifest : null;
+  } catch (err) {
+    return null; // file:// o manifest inexistente: sin archivos de audio
+  }
+}
+
+function manifestUrls(manifest, folder) {
+  const names = Array.isArray(manifest[folder]) ? manifest[folder] : [];
+  return names.filter(n => typeof n === 'string' && AUDIO_EXTENSIONS.test(n)).map(n => audioUrl(folder, n));
+}
+
+// Lee el manifest, valida los efectos y arranca la música. No bloquea el arranque: llamar sin await.
+export async function initAudioFiles() {
+  const manifest = await fetchSoundManifest();
+  if (!manifest) return;
+
+  bgmCandidates = manifestUrls(manifest, 'bgm');
+  if (soundEnabled) startMusic();
+
+  const probed = await Promise.all(manifestUrls(manifest, 'sfx').map(async (url) => (await probeAudio(url)) ? url : null));
+  sfxPlayable = probed.filter(Boolean);
+}
+
+// Elige una pista al azar entre las válidas (baraja y toma la primera que carga) y la deja en loop.
+async function startMusic() {
+  if (!soundEnabled || bgmLoading) return;
+  if (bgmAudio) { tryPlayMusic(); return; }
+  if (!bgmCandidates.length) return;
+
+  bgmLoading = true;
+  try {
+    for (const url of shuffled(bgmCandidates)) {
+      const audio = await probeAudio(url);
+      if (audio) {
+        audio.loop = true;
+        audio.volume = BGM_VOLUME;
+        bgmAudio = audio;
+        break;
+      }
+    }
+  } finally {
+    bgmLoading = false;
+  }
+  if (bgmAudio) tryPlayMusic();
+}
+
+function pauseMusic() {
+  if (bgmAudio) bgmAudio.pause();
+}
+
+// Los navegadores bloquean el audio hasta el primer gesto del usuario: si falla, se reintenta en el próximo.
+function tryPlayMusic() {
+  if (!bgmAudio || !soundEnabled) return;
+  try {
+    const playing = bgmAudio.play();
+    if (playing && typeof playing.catch === 'function') playing.catch(waitForGestureToPlayMusic);
+  } catch (err) {
+    waitForGestureToPlayMusic();
+  }
+}
+
+function waitForGestureToPlayMusic() {
+  if (bgmWaitingForGesture) return;
+  bgmWaitingForGesture = true;
+  const retry = () => {
+    GESTURE_EVENTS.forEach(name => document.removeEventListener(name, retry, true));
+    bgmWaitingForGesture = false;
+    tryPlayMusic();
+  };
+  GESTURE_EVENTS.forEach(name => document.addEventListener(name, retry, true));
+}
+
+// Reproduce un efecto al azar de snd/sfx. Devuelve false si no hay ninguno válido.
+function playSfxFile() {
+  if (!sfxPlayable.length) return false;
+  try {
+    const audio = new Audio(sfxPlayable[Math.floor(Math.random() * sfxPlayable.length)]);
+    audio.volume = SFX_VOLUME;
+    const playing = audio.play();
+    if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Clic derecho: agregar / quitar carta. Sin archivos en snd/sfx suena el efecto sintetizado de siempre.
+export function playCardAddSfx() {
+  if (!soundEnabled) return;
+  if (!playSfxFile()) playCardDrop();
+}
+
+export function playCardRemoveSfx() {
+  if (!soundEnabled) return;
+  if (!playSfxFile()) playCardRemove();
 }

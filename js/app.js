@@ -9,7 +9,7 @@ import { initDeckView, renderDeck } from './deckManager.js';
 import { initFilters, renderLibrary } from './filterManager.js';
 import { initDragAndDrop } from './dragAndDrop.js';
 import { initTestHandModal } from './testHand.js';
-import { initSoundState, toggleSound, isSoundEnabled, playClick, playCardDrop, playCardRemove } from './sound.js';
+import { initSoundState, initAudioFiles, toggleSound, isSoundEnabled, playClick, playCardDrop, playCardRemove } from './sound.js';
 import { initIndexedDB, processImageFiles, clearCustomCardsDB } from './customCardImporter.js';
 import { initBanlistModal } from './banlistManager.js';
 import { initSavedDecksModal } from './savedDecksManager.js';
@@ -60,7 +60,7 @@ function initSoundButton() {
     btn.addEventListener('click', () => {
       const enabled = toggleSound();
       updateIcon();
-      showToast(enabled ? 'Efectos de sonido activados' : 'Efectos de sonido silenciados', 'info');
+      showToast(enabled ? 'Sonido activado' : 'Sonido silenciado', 'info');
     });
   }
 }
@@ -385,6 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 3. Initialize Views and Controllers
   initSoundButton();
+  initAudioFiles(); // música y efectos de snd/ (no bloquea el arranque)
   initDeckView();
   initFilters();
   initDragAndDrop();

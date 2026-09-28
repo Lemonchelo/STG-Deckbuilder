@@ -8,7 +8,7 @@ import { state, removeCardFromDeck, getDeckTotalCount, setDeckName, getActiveExt
 import { getCardById, ELEMENTS, renderElementIcon } from './cardsData.js';
 import { createCardElement, openCardInspector } from './cardInspector.js';
 import { renderManaCurve } from './manaCurve.js';
-import { playCardRemove } from './sound.js';
+import { playCardRemove, playCardRemoveSfx } from './sound.js';
 
 export function initDeckView() {
   const deckGrid = document.getElementById('deck-grid');
@@ -65,7 +65,7 @@ function setupDeckGridInteractions(gridEl, target) {
     const cardId = cardWrapper.dataset.cardId;
     if (!cardId) return;
     removeCardFromDeck(cardId, false, target);
-    playCardRemove();
+    playCardRemoveSfx();
   });
 
   gridEl.addEventListener('dblclick', (e) => {
