@@ -404,7 +404,7 @@ function escapeHtml(value) {
   };
 
   const state = {
-    deckName: 'Mi Mazo de Batalla',
+    deckName: 'Mi Mazo',
     deck: [], // Main Deck
     sideDeck: [], // Side Deck (shares copy limits with Main Deck)
     maxDeckSize: 40,
@@ -721,7 +721,7 @@ function escapeHtml(value) {
   }
 
   function setDeckName(name) {
-    state.deckName = name.trim() || 'Mi Mazo de Batalla';
+    state.deckName = name.trim() || 'Mi Mazo';
     saveToLocalStorage();
   }
 
