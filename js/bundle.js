@@ -1094,7 +1094,57 @@ function escapeHtml(value) {
   // 4. SOUND SYNTHESIS
   // ==========================================================================
   let audioCtx = null;
-  let soundEnabled = true;
+  // ==================== VOLUMEN (música y efectos) ====================
+  // Cada volumen va de 0 a 1 y se recuerda en localStorage. 0 equivale a silencio.
+  const BGM_DEFAULT_VOLUME = 0.3;
+  const SFX_DEFAULT_VOLUME = 0.7;
+  const BGM_VOLUME_KEY = 'aetherium_bgm_volume';
+  const SFX_VOLUME_KEY = 'aetherium_sfx_volume';
+  const LEGACY_SOUND_KEY = 'aetherium_sound_enabled'; // interruptor de silencio anterior
+
+  let bgmVolume = BGM_DEFAULT_VOLUME;
+  let sfxVolume = SFX_DEFAULT_VOLUME;
+
+  function clampVolume(value, fallback) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+  }
+
+  function readStored(key) {
+    try { return localStorage.getItem(key); } catch (err) { return null; }
+  }
+
+  function saveVolume(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (err) {}
+  }
+
+  function initSoundState() {
+    const bgm = readStored(BGM_VOLUME_KEY);
+    const sfx = readStored(SFX_VOLUME_KEY);
+    // Quien había silenciado todo con el interruptor anterior sigue en silencio.
+    const wasMuted = bgm === null && sfx === null && readStored(LEGACY_SOUND_KEY) === 'false';
+    bgmVolume = wasMuted ? 0 : clampVolume(bgm, BGM_DEFAULT_VOLUME);
+    sfxVolume = wasMuted ? 0 : clampVolume(sfx, SFX_DEFAULT_VOLUME);
+  }
+
+  function getBgmVolume() { return bgmVolume; }
+  function getSfxVolume() { return sfxVolume; }
+
+  function setBgmVolume(value) {
+    bgmVolume = clampVolume(value, bgmVolume);
+    saveVolume(BGM_VOLUME_KEY, bgmVolume);
+    if (bgmAudio) bgmAudio.volume = bgmVolume;
+    if (bgmVolume > 0) startMusic(); else pauseMusic();
+    return bgmVolume;
+  }
+
+  function setSfxVolume(value) {
+    sfxVolume = clampVolume(value, sfxVolume);
+    saveVolume(SFX_VOLUME_KEY, sfxVolume);
+    return sfxVolume;
+  }
+
 
   function getAudioContext() {
     if (!audioCtx) {
@@ -1107,25 +1157,20 @@ function escapeHtml(value) {
     return audioCtx;
   }
 
-  function isSoundEnabled() { return soundEnabled; }
-  function initSoundState() {
-    try {
-      const saved = localStorage.getItem('aetherium_sound_enabled');
-      if (saved !== null) soundEnabled = JSON.parse(saved) !== false;
-    } catch (err) {
-      soundEnabled = true;
+  // Los efectos sintetizados pasan por un nodo de ganancia común que aplica el volumen de efectos
+  // (con el valor por defecto suenan igual que antes).
+  let sfxBus = null;
+  function getSfxBus(ctx) {
+    if (!sfxBus) {
+      sfxBus = ctx.createGain();
+      sfxBus.connect(ctx.destination);
     }
-    return soundEnabled;
-  }
-  function toggleSound() {
-    soundEnabled = !soundEnabled;
-    try { localStorage.setItem('aetherium_sound_enabled', JSON.stringify(soundEnabled)); } catch (err) {}
-    if (soundEnabled) startMusic(); else pauseMusic();
-    return soundEnabled;
+    sfxBus.gain.value = sfxVolume / SFX_DEFAULT_VOLUME;
+    return sfxBus;
   }
 
   function playTone(freq, type = 'sine', duration = 0.08, gainVal = 0.1) {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -1136,7 +1181,7 @@ function escapeHtml(value) {
       gain.gain.setValueAtTime(gainVal, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getSfxBus(ctx));
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch (e) {}
@@ -1147,7 +1192,7 @@ function escapeHtml(value) {
   function playCardRemove() { playTone(240, 'sawtooth', 0.08, 0.09); }
   function playClick() { playTone(780, 'sine', 0.03, 0.05); }
   function playShuffle() {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     for (let i = 0; i < 4; i++) {
       setTimeout(() => playTone(300 + Math.random() * 300, 'triangle', 0.04, 0.06), i * 45);
     }
@@ -1158,12 +1203,10 @@ function escapeHtml(value) {
   // nombres salen de snd/sound-manifest.json ({ "bgm": [...], "sfx": [...] }), que se
   // regenera con `node tests/generate-sound-manifest.cjs` tras sumar o sacar archivos.
   // Sin manifest (file://, host sin snd/) no pasa nada: no hay música y los efectos
-  // vuelven a los sonidos sintetizados de arriba.
+  // vuelven a los sonidos sintetizados.
   const SOUND_MANIFEST_PATH = 'snd/sound-manifest.json';
   const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg)$/i;
   const AUDIO_LOAD_TIMEOUT_MS = 8000;
-  const BGM_VOLUME = 0.3;   // 0 a 1
-  const SFX_VOLUME = 0.7;   // 0 a 1
   const GESTURE_EVENTS = ['pointerdown', 'pointerup', 'keydown', 'touchend'];
 
   let bgmCandidates = [];   // URLs de snd/bgm listadas en el manifest
@@ -1221,12 +1264,13 @@ function escapeHtml(value) {
   }
 
   // Lee el manifest, valida los efectos y arranca la música. No bloquea el arranque: llamar sin await.
+  // Requiere haber llamado antes a initSoundState() para conocer los volúmenes guardados.
   async function initAudioFiles() {
     const manifest = await fetchSoundManifest();
     if (!manifest) return;
 
     bgmCandidates = manifestUrls(manifest, 'bgm');
-    if (soundEnabled) startMusic();
+    if (bgmVolume > 0) startMusic();
 
     const probed = await Promise.all(manifestUrls(manifest, 'sfx').map(async (url) => (await probeAudio(url)) ? url : null));
     sfxPlayable = probed.filter(Boolean);
@@ -1234,7 +1278,7 @@ function escapeHtml(value) {
 
   // Elige una pista al azar entre las válidas (baraja y toma la primera que carga) y la deja en loop.
   async function startMusic() {
-    if (!soundEnabled || bgmLoading) return;
+    if (bgmVolume <= 0 || bgmLoading) return;
     if (bgmAudio) { tryPlayMusic(); return; }
     if (!bgmCandidates.length) return;
 
@@ -1244,7 +1288,7 @@ function escapeHtml(value) {
         const audio = await probeAudio(url);
         if (audio) {
           audio.loop = true;
-          audio.volume = BGM_VOLUME;
+          audio.volume = bgmVolume;
           bgmAudio = audio;
           break;
         }
@@ -1261,7 +1305,7 @@ function escapeHtml(value) {
 
   // Los navegadores bloquean el audio hasta el primer gesto del usuario: si falla, se reintenta en el próximo.
   function tryPlayMusic() {
-    if (!bgmAudio || !soundEnabled) return;
+    if (!bgmAudio || bgmVolume <= 0 || !bgmAudio.paused) return;
     try {
       const playing = bgmAudio.play();
       if (playing && typeof playing.catch === 'function') playing.catch(waitForGestureToPlayMusic);
@@ -1286,7 +1330,7 @@ function escapeHtml(value) {
     if (!sfxPlayable.length) return false;
     try {
       const audio = new Audio(sfxPlayable[Math.floor(Math.random() * sfxPlayable.length)]);
-      audio.volume = SFX_VOLUME;
+      audio.volume = sfxVolume;
       const playing = audio.play();
       if (playing && typeof playing.catch === 'function') playing.catch(() => {});
       return true;
@@ -1297,12 +1341,12 @@ function escapeHtml(value) {
 
   // Clic derecho: agregar / quitar carta. Sin archivos en snd/sfx suena el efecto sintetizado de siempre.
   function playCardAddSfx() {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     if (!playSfxFile()) playCardDrop();
   }
 
   function playCardRemoveSfx() {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     if (!playSfxFile()) playCardRemove();
   }
 
@@ -2671,22 +2715,59 @@ function initCardInspector() {
     }, 2800);
   }
 
-  function initSoundButton() {
-    const btn = document.getElementById('btn-sound-toggle');
-    const icon = document.getElementById('sound-icon');
-    const updateIcon = () => {
-      if (icon) icon.textContent = isSoundEnabled() ? '🔊' : '🔇';
-    };
+  // ==================== VOLUMEN (MÚSICA / EFECTOS) ====================
+  function initVolumeControl() {
+    const root = document.getElementById('volume-control');
+    const btn = document.getElementById('btn-volume');
+    const panel = document.getElementById('volume-panel');
+    const icon = document.getElementById('volume-icon');
+    if (!root || !btn || !panel) return;
 
     initSoundState();
-    updateIcon();
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const enabled = toggleSound();
+
+    const sliders = [
+      { input: document.getElementById('volume-bgm'), output: document.getElementById('volume-bgm-value'), get: getBgmVolume, set: setBgmVolume, preview: false },
+      { input: document.getElementById('volume-sfx'), output: document.getElementById('volume-sfx-value'), get: getSfxVolume, set: setSfxVolume, preview: true }
+    ];
+
+    const updateIcon = () => {
+      if (icon) icon.textContent = getBgmVolume() === 0 && getSfxVolume() === 0 ? '🔇' : '🔊';
+    };
+
+    const paint = (s) => {
+      const pct = Math.round(s.get() * 100);
+      s.input.value = pct;
+      s.input.style.setProperty('--fill', pct + '%');
+      if (s.output) s.output.textContent = pct + '%';
+    };
+
+    for (const s of sliders) {
+      if (!s.input) continue;
+      paint(s);
+      s.input.addEventListener('input', () => {
+        s.set(Number(s.input.value) / 100);
+        paint(s);
         updateIcon();
-        showToast(enabled ? 'Sonido activado' : 'Sonido silenciado', 'info');
       });
+      // Al soltar el slider de efectos suena uno de muestra para juzgar el nivel.
+      if (s.preview) s.input.addEventListener('change', () => playCardAddSfx());
     }
+    updateIcon();
+
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    btn.addEventListener('click', () => setOpen(panel.hidden));
+    document.addEventListener('pointerdown', (e) => {
+      if (!panel.hidden && !root.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) {
+        setOpen(false);
+        btn.focus();
+      }
+    });
   }
 
   function initPoolUpdatesButton() {
@@ -3688,7 +3769,7 @@ function initCardInspector() {
     initFilters();
     initDragAndDrop();
     initTestHandModal();
-    initSoundButton();
+    initVolumeControl();
     initAudioFiles(); // música y efectos de snd/ (no bloquea el arranque)
     initClearDeckButton();
     initExportImportModal();

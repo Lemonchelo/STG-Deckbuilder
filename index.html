@@ -74,9 +74,23 @@
           <span class="btn-icon">🗑️</span>
           <span class="btn-label">Limpiar</span>
         </button>
-        <button id="btn-sound-toggle" class="btn btn-icon-only btn-ghost" title="Alternar música y efectos de sonido">
-          <span id="sound-icon">🔊</span>
-        </button>
+        <div class="volume-control" id="volume-control">
+          <button id="btn-volume" class="btn btn-icon-only btn-ghost" type="button" title="Volumen" aria-label="Volumen" aria-haspopup="true" aria-expanded="false" aria-controls="volume-panel">
+            <span id="volume-icon">🔊</span>
+          </button>
+          <div class="volume-panel" id="volume-panel" role="group" aria-label="Volumen" hidden>
+            <label class="volume-row" for="volume-bgm">
+              <span class="volume-label">Música</span>
+              <output id="volume-bgm-value" for="volume-bgm">30%</output>
+              <input type="range" class="volume-slider" id="volume-bgm" min="0" max="100" step="1" value="30">
+            </label>
+            <label class="volume-row" for="volume-sfx">
+              <span class="volume-label">Efectos</span>
+              <output id="volume-sfx-value" for="volume-sfx">70%</output>
+              <input type="range" class="volume-slider" id="volume-sfx" min="0" max="100" step="1" value="70">
+            </label>
+          </div>
+        </div>
       </div>
     </header>
 

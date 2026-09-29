@@ -9,7 +9,7 @@ import { initDeckView, renderDeck } from './deckManager.js';
 import { initFilters, renderLibrary } from './filterManager.js';
 import { initDragAndDrop } from './dragAndDrop.js';
 import { initTestHandModal } from './testHand.js';
-import { initSoundState, initAudioFiles, toggleSound, isSoundEnabled, playClick, playCardDrop, playCardRemove } from './sound.js';
+import { initSoundState, initAudioFiles, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, playClick, playCardDrop, playCardRemove, playCardAddSfx } from './sound.js';
 import { initIndexedDB, processImageFiles, clearCustomCardsDB } from './customCardImporter.js';
 import { initBanlistModal } from './banlistManager.js';
 import { initSavedDecksModal } from './savedDecksManager.js';
@@ -42,27 +42,59 @@ export function showToast(message, type = 'info') {
   }, 2800);
 }
 
-// ==================== SOUND TOGGLE ====================
-function initSoundButton() {
-  const btn = document.getElementById('btn-sound-toggle');
-  const icon = document.getElementById('sound-icon');
-  
-  const updateIcon = () => {
-    if (icon) {
-      icon.textContent = isSoundEnabled() ? '🔊' : '🔇';
-    }
-  };
+// ==================== VOLUMEN (MÚSICA / EFECTOS) ====================
+function initVolumeControl() {
+  const root = document.getElementById('volume-control');
+  const btn = document.getElementById('btn-volume');
+  const panel = document.getElementById('volume-panel');
+  const icon = document.getElementById('volume-icon');
+  if (!root || !btn || !panel) return;
 
   initSoundState();
+
+  const sliders = [
+    { input: document.getElementById('volume-bgm'), output: document.getElementById('volume-bgm-value'), get: getBgmVolume, set: setBgmVolume, preview: false },
+    { input: document.getElementById('volume-sfx'), output: document.getElementById('volume-sfx-value'), get: getSfxVolume, set: setSfxVolume, preview: true }
+  ];
+
+  const updateIcon = () => {
+    if (icon) icon.textContent = getBgmVolume() === 0 && getSfxVolume() === 0 ? '🔇' : '🔊';
+  };
+
+  const paint = (s) => {
+    const pct = Math.round(s.get() * 100);
+    s.input.value = pct;
+    s.input.style.setProperty('--fill', pct + '%');
+    if (s.output) s.output.textContent = pct + '%';
+  };
+
+  for (const s of sliders) {
+    if (!s.input) continue;
+    paint(s);
+    s.input.addEventListener('input', () => {
+      s.set(Number(s.input.value) / 100);
+      paint(s);
+      updateIcon();
+    });
+    // Al soltar el slider de efectos suena uno de muestra para juzgar el nivel.
+    if (s.preview) s.input.addEventListener('change', () => playCardAddSfx());
+  }
   updateIcon();
 
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const enabled = toggleSound();
-      updateIcon();
-      showToast(enabled ? 'Sonido activado' : 'Sonido silenciado', 'info');
-    });
-  }
+  const setOpen = (open) => {
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  btn.addEventListener('click', () => setOpen(panel.hidden));
+  document.addEventListener('pointerdown', (e) => {
+    if (!panel.hidden && !root.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) {
+      setOpen(false);
+      btn.focus();
+    }
+  });
 }
 
 // ==================== CLEAR DECK MODAL / CONFIRM ====================
@@ -384,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadInitialState();
 
   // 3. Initialize Views and Controllers
-  initSoundButton();
+  initVolumeControl();
   initAudioFiles(); // música y efectos de snd/ (no bloquea el arranque)
   initDeckView();
   initFilters();
