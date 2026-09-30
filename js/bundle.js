@@ -2647,8 +2647,8 @@ function initCardInspector() {
     if (openBtn) {
       openBtn.addEventListener('click', () => {
         const totalCount = getDeckTotalCount();
-        if (totalCount < 5) {
-          showToast('Necesitas al menos 5 cartas en el mazo para simular una mano inicial.', 'warning');
+        if (totalCount < 6) {
+          showToast('Necesitas al menos 6 cartas en el mazo para simular una mano inicial.', 'warning');
           return;
         }
         playShuffle();
@@ -2678,8 +2678,8 @@ function initCardInspector() {
     const fullDeck = buildFullDeckArray();
     const shuffled = shuffleArray(fullDeck);
 
-    currentHand = shuffled.slice(0, 5).map(card => ({ card, selectedForMulligan: false }));
-    remainingDeck = shuffled.slice(5);
+    currentHand = shuffled.slice(0, 6).map(card => ({ card, selectedForMulligan: false }));
+    remainingDeck = shuffled.slice(6);
 
     renderHand();
   }
