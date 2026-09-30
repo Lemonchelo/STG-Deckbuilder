@@ -1,6 +1,6 @@
 # STG TCG Deckbuilder
 
-Deckbuilder personalizado para el TCG Argentino "Rise of Gods".
+Deckbuilder personalizado para el TCG Argentino "Rise of Gods"
 
 ## Contenido
 
