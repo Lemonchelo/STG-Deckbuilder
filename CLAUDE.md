@@ -18,7 +18,9 @@ Preferí una solución localizada y comprensible. No mezcles un arreglo con una 
 - `state.js`: mazo, validación, filtros e importación/exportación. `cardsData.js`: colección y constantes.
 - `customCardImporter.js`: nombres de archivo, lectura de imágenes e IndexedDB.
 - `filterManager.js`, `deckManager.js`, `cardInspector.js`: biblioteca, mazo y detalle. `testHand.js`: simulador de mano, no motor de combate.
-- `cartas/`: 464 imágenes originales y `catalogo-original.json`, que conserva identificadores y metadatos del origen.
+- `cartas/`: 464 imágenes originales, `catalogo-original.json` (identificadores y metadatos del origen) y `pool-manifest.json` (lista de rutas que `poolManager.js` lee por `fetch()` para armar la pool base sin selector de carpeta; regenerarlo con `node tests/generate-pool-manifest.cjs` tras sumar o sacar imágenes).
+- `snd/`: `bgm/` (música de fondo; se elige una pista válida al azar y queda en loop) y `sfx/` (efecto al agregar/quitar carta con clic derecho; al azar entre los válidos, con el sonido sintetizado como respaldo). `sound.js` lee `snd/sound-manifest.json` por `fetch()` (no hay listado de carpetas en GitHub Pages); regenerarlo con `node tests/generate-sound-manifest.cjs` tras sumar o sacar audios. Sin manifest (`file://`) no hay música ni efectos de archivo. `cartas/banlist-default.json`: banlist predefinida por el repo, aplicada al arrancar (`loadDefaultBanlist` en `state.js`) para quien no tenga banlist propia guardada; un límite o una eliminación que el usuario ya haya hecho en su navegador siempre gana sobre este archivo (ver `cartas/README.md`).
+El botón de volumen de la barra despliega dos sliders (música y efectos; 0 = silencio) cuyos valores se recuerdan en `localStorage`.
 - Las claves de almacenamiento y el formato exportado conservan nombres históricos de Aetherium. El nombre visible es **STG TCG Deckbuilder**. No cambies esas claves por motivos de marca: cualquier migración debe conservar los datos existentes.
 
 ## Exactitud del deckbuilding

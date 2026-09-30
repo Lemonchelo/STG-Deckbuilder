@@ -129,7 +129,6 @@ const ELEMENT_MAP = {
   tierra: 'tierra', earth: 'tierra', terra: 'tierra', verde: 'tierra', green: 'tierra', naturaleza: 'tierra',
   saturno: 'saturno', saturn: 'saturno', morado: 'saturno', violeta: 'saturno', purple: 'saturno',
   mercurio: 'mercurio', mercury: 'mercurio', plata: 'mercurio', plateado: 'mercurio', silver: 'mercurio', gris: 'mercurio',
-  urano: 'urano', uranus: 'urano', cian: 'urano', celeste: 'urano', cyan: 'urano', hielo: 'urano',
   pluton: 'pluton', plutón: 'pluton', pluto: 'pluton', vacio: 'pluton', vacío: 'pluton', sombra: 'pluton', negro: 'pluton',
   arcano: 'neutral', neutral: 'neutral', incoloro: 'neutral', colorless: 'neutral'
 };

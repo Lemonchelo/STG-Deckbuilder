@@ -3,13 +3,13 @@ import { escapeHtml } from './cardsData.js';
  * AETHERIUM TCG DECKBUILDER - APPLICATION BOOTSTRAP
  */
 
-import { state, loadInitialState, subscribeToDeck, subscribeToFilters, subscribeToBanlist, clearDeck, exportDeckToText, exportDeckToJSON, importDeckFromText, importDeckFromJSON } from './state.js';
+import { state, loadInitialState, loadDefaultBanlist, subscribeToDeck, subscribeToFilters, subscribeToBanlist, clearDeck, exportDeckToText, exportDeckToJSON, exportDeckToOfficialFormat, importDeckFromText, importDeckFromJSON, importDeckFromOfficialFormat } from './state.js';
 import { initCardInspector } from './cardInspector.js';
 import { initDeckView, renderDeck } from './deckManager.js';
 import { initFilters, renderLibrary } from './filterManager.js';
 import { initDragAndDrop } from './dragAndDrop.js';
 import { initTestHandModal } from './testHand.js';
-import { initSoundState, toggleSound, isSoundEnabled, playClick, playCardDrop, playCardRemove } from './sound.js';
+import { initSoundState, initAudioFiles, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, playClick, playCardDrop, playCardRemove, playCardAddSfx } from './sound.js';
 import { initIndexedDB, processImageFiles, clearCustomCardsDB } from './customCardImporter.js';
 import { initBanlistModal } from './banlistManager.js';
 import { initSavedDecksModal } from './savedDecksManager.js';
@@ -42,27 +42,59 @@ export function showToast(message, type = 'info') {
   }, 2800);
 }
 
-// ==================== SOUND TOGGLE ====================
-function initSoundButton() {
-  const btn = document.getElementById('btn-sound-toggle');
-  const icon = document.getElementById('sound-icon');
-  
-  const updateIcon = () => {
-    if (icon) {
-      icon.textContent = isSoundEnabled() ? '🔊' : '🔇';
-    }
-  };
+// ==================== VOLUMEN (MÚSICA / EFECTOS) ====================
+function initVolumeControl() {
+  const root = document.getElementById('volume-control');
+  const btn = document.getElementById('btn-volume');
+  const panel = document.getElementById('volume-panel');
+  const icon = document.getElementById('volume-icon');
+  if (!root || !btn || !panel) return;
 
   initSoundState();
+
+  const sliders = [
+    { input: document.getElementById('volume-bgm'), output: document.getElementById('volume-bgm-value'), get: getBgmVolume, set: setBgmVolume, preview: false },
+    { input: document.getElementById('volume-sfx'), output: document.getElementById('volume-sfx-value'), get: getSfxVolume, set: setSfxVolume, preview: true }
+  ];
+
+  const updateIcon = () => {
+    if (icon) icon.textContent = getBgmVolume() === 0 && getSfxVolume() === 0 ? '🔇' : '🔊';
+  };
+
+  const paint = (s) => {
+    const pct = Math.round(s.get() * 100);
+    s.input.value = pct;
+    s.input.style.setProperty('--fill', pct + '%');
+    if (s.output) s.output.textContent = pct + '%';
+  };
+
+  for (const s of sliders) {
+    if (!s.input) continue;
+    paint(s);
+    s.input.addEventListener('input', () => {
+      s.set(Number(s.input.value) / 100);
+      paint(s);
+      updateIcon();
+    });
+    // Al soltar el slider de efectos suena uno de muestra para juzgar el nivel.
+    if (s.preview) s.input.addEventListener('change', () => playCardAddSfx());
+  }
   updateIcon();
 
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const enabled = toggleSound();
-      updateIcon();
-      showToast(enabled ? 'Efectos de sonido activados' : 'Efectos de sonido silenciados', 'info');
-    });
-  }
+  const setOpen = (open) => {
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  btn.addEventListener('click', () => setOpen(panel.hidden));
+  document.addEventListener('pointerdown', (e) => {
+    if (!panel.hidden && !root.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) {
+      setOpen(false);
+      btn.focus();
+    }
+  });
 }
 
 // ==================== CLEAR DECK MODAL / CONFIRM ====================
@@ -139,6 +171,7 @@ function initExportImportModal() {
 
   const textArea = document.getElementById('export-text-area');
   const jsonArea = document.getElementById('export-json-area');
+  const officialArea = document.getElementById('export-official-area');
 
   const tabButtons = modal ? modal.querySelectorAll('.tab-btn') : [];
 
@@ -151,16 +184,9 @@ function initExportImportModal() {
       btn.classList.add('active');
       currentTab = btn.dataset.tab;
 
-      const tabText = document.getElementById('tab-text-deck');
-      const tabJson = document.getElementById('tab-json-deck');
-
-      if (currentTab === 'tab-text-deck') {
-        if (tabText) tabText.classList.add('active');
-        if (tabJson) tabJson.classList.remove('active');
-      } else {
-        if (tabText) tabText.classList.remove('active');
-        if (tabJson) tabJson.classList.add('active');
-      }
+      modal.querySelectorAll('.tab-content').forEach(tabEl => {
+        tabEl.classList.toggle('active', tabEl.id === currentTab);
+      });
       playClick();
     });
   });
@@ -171,6 +197,7 @@ function initExportImportModal() {
       playClick();
       if (textArea) textArea.value = exportDeckToText();
       if (jsonArea) jsonArea.value = exportDeckToJSON();
+      if (officialArea) officialArea.value = exportDeckToOfficialFormat();
       if (modal) modal.classList.add('is-open');
     });
   }
@@ -187,9 +214,10 @@ function initExportImportModal() {
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
       playClick();
-      const contentToCopy = currentTab === 'tab-text-deck' 
-        ? (textArea ? textArea.value : '') 
-        : (jsonArea ? jsonArea.value : '');
+      let contentToCopy = '';
+      if (currentTab === 'tab-text-deck') contentToCopy = textArea ? textArea.value : '';
+      else if (currentTab === 'tab-json-deck') contentToCopy = jsonArea ? jsonArea.value : '';
+      else contentToCopy = officialArea ? officialArea.value : '';
 
       try {
         await navigator.clipboard.writeText(contentToCopy);
@@ -200,7 +228,7 @@ function initExportImportModal() {
     });
   }
 
-  // Import / Load Deck from Text/JSON
+  // Import / Load Deck from Text/JSON/Official Format
   if (applyBtn) {
     applyBtn.addEventListener('click', () => {
       playClick();
@@ -208,9 +236,12 @@ function initExportImportModal() {
       if (currentTab === 'tab-text-deck') {
         const text = textArea ? textArea.value : '';
         res = importDeckFromText(text);
-      } else {
+      } else if (currentTab === 'tab-json-deck') {
         const json = jsonArea ? jsonArea.value : '';
         res = importDeckFromJSON(json);
+      } else {
+        const official = officialArea ? officialArea.value : '';
+        res = importDeckFromOfficialFormat(official);
       }
 
       if (res.success) {
@@ -383,9 +414,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2. Load Stored Data
   loadInitialState();
+  await loadDefaultBanlist(); // cartas/banlist-default.json: límites predefinidos por el repo
 
   // 3. Initialize Views and Controllers
-  initSoundButton();
+  initVolumeControl();
+  initAudioFiles(); // música y efectos de snd/ (no bloquea el arranque)
   initDeckView();
   initFilters();
   initDragAndDrop();

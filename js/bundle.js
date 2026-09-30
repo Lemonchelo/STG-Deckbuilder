@@ -23,16 +23,22 @@ function escapeHtml(value) {
   // 1. CARDS DATA & CONSTANTS
   // ==========================================================================
   const ELEMENTS = {
-    marte: { name: 'Marte', icon: '🔴', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.45)' },
-    neptuno: { name: 'Neptuno', icon: '🔵', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)' },
-    jupiter: { name: 'Júpiter', icon: '🟠', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.45)' },
-    tierra: { name: 'Tierra', icon: '🟢', color: '#10b981', glow: 'rgba(16, 185, 129, 0.45)' },
-    saturno: { name: 'Saturno', icon: '🪐', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.45)' },
-    mercurio: { name: 'Mercurio', icon: '⚪', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.45)' },
-    urano: { name: 'Urano', icon: '💠', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.45)' },
-    pluton: { name: 'Plutón', icon: '🌌', color: '#ec4899', glow: 'rgba(236, 72, 153, 0.45)' },
+    marte: { iconSrc: 'assets/factions/marte.png', name: 'Marte', icon: '🔴', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.45)' },
+    neptuno: { iconSrc: 'assets/factions/neptuno.png', name: 'Neptuno', icon: '🔵', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)' },
+    jupiter: { iconSrc: 'assets/factions/jupiter.png', name: 'Júpiter', icon: '🟠', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.45)' },
+    tierra: { iconSrc: 'assets/factions/tierra.png', name: 'Tierra', icon: '🟢', color: '#10b981', glow: 'rgba(16, 185, 129, 0.45)' },
+    saturno: { iconSrc: 'assets/factions/saturno.png', name: 'Saturno', icon: '🪐', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.45)' },
+    mercurio: { iconSrc: 'assets/factions/mercurio.png', name: 'Mercurio', icon: '⚪', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.45)' },
+    pluton: { iconSrc: 'assets/factions/pluton.png', name: 'Plutón', icon: '🌌', color: '#ec4899', glow: 'rgba(236, 72, 153, 0.45)' },
     neutral: { name: 'Arcano', icon: '🔮', color: '#94a3b8', glow: 'rgba(148, 163, 184, 0.3)' }
   };
+
+  function renderElementIcon(elementKey) {
+    const element = ELEMENTS[elementKey] || ELEMENTS.neutral;
+    return element.iconSrc
+      ? `<img class="faction-icon" src="${element.iconSrc}" alt="" width="20" height="20" draggable="false">`
+      : element.icon;
+  }
 
   const CARD_TYPES = [
     { id: 'all', label: 'Todos' },
@@ -83,7 +89,9 @@ function escapeHtml(value) {
       <text x="125" y="36" font-family="'Cinzel', serif" font-size="11.5" font-weight="800" fill="#ffffff" text-anchor="middle">${name}</text>
 
       <!-- Planet Symbol -->
-      <text x="222" y="36" font-size="14" text-anchor="middle">${elem.icon}</text>
+      ${elem.iconSrc
+      ? `<image href="${elem.iconSrc}" x="212" y="21" width="20" height="20"/>`
+      : `<text x="222" y="36" font-size="14" text-anchor="middle">${elem.icon}</text>`}
 
       <!-- Central Art Window -->
       <rect x="16" y="54" width="218" height="155" rx="8" fill="#060913" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -127,6 +135,13 @@ function escapeHtml(value) {
 
   function getCardById(id) {
     return CARDS_DATA.find(c => c.id === id);
+  }
+
+  // Búsqueda exacta por nombre (sin distinguir mayúsculas/espacios extremos), para archivos
+  // como cartas/banlist-default.json que identifican cartas por nombre en vez de id interno.
+  function getCardByName(name) {
+    const q = String(name).trim().toLowerCase();
+    return CARDS_DATA.find(c => c.name.trim().toLowerCase() === q);
   }
 
   // ==========================================================================
@@ -236,7 +251,6 @@ function escapeHtml(value) {
     tierra: 'tierra', earth: 'tierra', terra: 'tierra', verde: 'tierra', green: 'tierra', naturaleza: 'tierra',
     saturno: 'saturno', saturn: 'saturno', morado: 'saturno', violeta: 'saturno', purple: 'saturno',
     mercurio: 'mercurio', mercury: 'mercurio', plata: 'mercurio', plateado: 'mercurio', silver: 'mercurio', gris: 'mercurio',
-    urano: 'urano', uranus: 'urano', cian: 'urano', celeste: 'urano', cyan: 'urano', hielo: 'urano',
     pluton: 'pluton', plutón: 'pluton', pluto: 'pluton', vacio: 'pluton', vacío: 'pluton', sombra: 'pluton', negro: 'pluton',
     arcano: 'neutral', neutral: 'neutral', incoloro: 'neutral', colorless: 'neutral'
   };
@@ -388,6 +402,7 @@ function escapeHtml(value) {
   // ==========================================================================
   const STORAGE_KEY = 'aetherium_tcg_active_deck';
   const STORAGE_KEY_BANLIST = 'aetherium_tcg_banlist';
+  const STORAGE_KEY_BANLIST_IGNORED = 'aetherium_tcg_banlist_ignored_defaults';
 
   const RARITY_LIMITS = {
     Common: 4,
@@ -397,7 +412,7 @@ function escapeHtml(value) {
   };
 
   const state = {
-    deckName: 'Mi Mazo de Batalla',
+    deckName: 'Mi Mazo',
     deck: [], // Main Deck
     sideDeck: [], // Side Deck (shares copy limits with Main Deck)
     maxDeckSize: 40,
@@ -482,6 +497,25 @@ function escapeHtml(value) {
     } catch (err) {}
   }
 
+  // Nombres (en minúscula) de cartas que el usuario quitó explícitamente de su banlist:
+  // cartas/banlist-default.json no las vuelve a aplicar, aunque las siga listando.
+  let ignoredDefaultBanlist = new Set();
+
+  function saveIgnoredDefaultBanlist() {
+    try {
+      localStorage.setItem(STORAGE_KEY_BANLIST_IGNORED, JSON.stringify([...ignoredDefaultBanlist]));
+    } catch (err) {}
+  }
+
+  function loadIgnoredDefaultBanlist() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_BANLIST_IGNORED);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) ignoredDefaultBanlist = new Set(parsed.filter(n => typeof n === 'string'));
+    } catch (err) {}
+  }
+
   function isValidDeckItem(item) {
     const card = item && getCardById(item.cardId);
     return !!(item && Number.isSafeInteger(item.count) && item.count > 0 && card && card.type !== 'Token' && !card.isToken);
@@ -489,6 +523,7 @@ function escapeHtml(value) {
 
   function loadInitialState() {
     loadBanlistFromLocalStorage();
+    loadIgnoredDefaultBanlist();
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -555,8 +590,56 @@ function escapeHtml(value) {
   function clearBanlistLimit(cardId) {
     if (state.banlist[cardId] === undefined) return;
     delete state.banlist[cardId];
+    const card = getCardById(cardId);
+    if (card) {
+      ignoredDefaultBanlist.add(card.name.trim().toLowerCase());
+      saveIgnoredDefaultBanlist();
+    }
     saveBanlistToLocalStorage();
     notifyBanlistChanged();
+  }
+
+  /**
+   * Aplica cartas/banlist-default.json: límites predefinidos en el repo para quien
+   * todavía no tiene banlist propia guardada. Nunca pisa un límite que el usuario ya
+   * haya fijado (setBanlistLimit) ni una carta que haya quitado explícitamente
+   * (clearBanlistLimit) — eso siempre gana, hoy y en cualquier visita futura.
+   * `entries` es { [nombre de carta]: límite }; los nombres que no existen en el pool
+   * actual, o que ya tienen un valor propio, se ignoran en silencio.
+   */
+  function applyDefaultBanlistEntries(entries) {
+    if (!entries || typeof entries !== 'object') return;
+    let changed = false;
+    for (const [name, limit] of Object.entries(entries)) {
+      const key = String(name).trim().toLowerCase();
+      if (ignoredDefaultBanlist.has(key)) continue;
+      const card = getCardByName(name);
+      if (!card || card.type === 'Token' || card.isToken) continue;
+      if (state.banlist[card.id] !== undefined) continue;
+      const n = Number(limit);
+      if (!Number.isSafeInteger(n) || n < 0 || n > state.maxDeckSize) continue;
+      state.banlist[card.id] = n;
+      changed = true;
+    }
+    if (changed) {
+      saveBanlistToLocalStorage();
+      notifyBanlistChanged();
+    }
+  }
+
+  // Lee cartas/banlist-default.json por fetch() (igual que pool-manifest.json y
+  // sound-manifest.json: GitHub Pages no permite listar ni ejecutar nada del lado del
+  // servidor). Si el archivo no existe o falla (por ejemplo file://), no pasa nada:
+  // la app sigue funcionando solo con la banlist propia del usuario.
+  async function loadDefaultBanlist(path = 'cartas/banlist-default.json') {
+    try {
+      const res = await fetch(path, { cache: 'no-cache' });
+      if (!res.ok) return;
+      const entries = await res.json();
+      applyDefaultBanlistEntries(entries);
+    } catch (err) {
+      // file:// o archivo ausente: sin banlist predefinida
+    }
   }
 
   function getMaxAllowedCopies(cardId) {
@@ -714,18 +797,22 @@ function escapeHtml(value) {
   }
 
   function setDeckName(name) {
-    state.deckName = name.trim() || 'Mi Mazo de Batalla';
+    state.deckName = name.trim() || 'Mi Mazo';
     saveToLocalStorage();
   }
 
   function getActiveFactionsInDeck() {
     const factions = new Set();
-    state.deck.forEach(item => {
-      const card = getCardById(item.cardId);
-      if (card && card.element && card.element !== 'neutral') {
-        factions.add(card.element.toLowerCase());
-      }
-    });
+    const addFactionsFrom = (deckArr) => {
+      deckArr.forEach(item => {
+        const card = getCardById(item.cardId);
+        if (card && card.element && card.element !== 'neutral') {
+          factions.add(card.element.toLowerCase());
+        }
+      });
+    };
+    addFactionsFrom(state.deck);
+    addFactionsFrom(state.sideDeck);
     return factions;
   }
 
@@ -787,6 +874,91 @@ function escapeHtml(value) {
     }
 
     return text;
+  }
+
+  // ── Official site format (export/import) ────────────────────────────────────
+  // Matches the format the official card game site produces when exporting a deck:
+  // section headers "Mazo principal" / "Sidedeck", cards grouped under "(Faccion)"
+  // headers (one per element present in that section), with the Sello of that
+  // faction listed first when present, followed by the rest of the cards sorted
+  // alphabetically. Faction headers use the plain element key, capitalized
+  // (no accents), e.g. "pluton" -> "(Pluton)", even though the card itself is
+  // named "Sello de Plutón".
+  function capitalizeFactionKey(key) {
+    if (!key) return 'Arcano';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  function buildOfficialSection(deckArr) {
+    const byFaction = new Map(); // elementKey -> { sello: {name,count}|null, others: [{name,count}] }
+
+    deckArr.forEach(item => {
+      const card = getCardById(item.cardId);
+      if (!card) return;
+      const key = card.element || 'neutral';
+      if (!byFaction.has(key)) byFaction.set(key, { sello: null, others: [] });
+      const group = byFaction.get(key);
+      if (card.isSello || card.type === 'Sello') {
+        group.sello = { name: card.name, count: item.count };
+      } else {
+        group.others.push({ name: card.name, count: item.count });
+      }
+    });
+
+    const factionKeys = [...byFaction.keys()].sort((a, b) =>
+      capitalizeFactionKey(a).localeCompare(capitalizeFactionKey(b), 'es', { sensitivity: 'base' })
+    );
+
+    return factionKeys.map(key => {
+      const group = byFaction.get(key);
+      const lines = [];
+      if (group.sello) lines.push(`${group.sello.name} x${group.sello.count}`);
+      group.others
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+        .forEach(c => lines.push(`${c.name} x${c.count}`));
+      return `(${capitalizeFactionKey(key)})\n${lines.join('\n')}`;
+    }).join('\n\n');
+  }
+
+  function exportDeckToOfficialFormat() {
+    let text = 'Mazo principal\n\n' + buildOfficialSection(state.deck);
+    if (state.sideDeck.length > 0) {
+      text += '\n\nSidedeck\n\n' + buildOfficialSection(state.sideDeck);
+    }
+    return text;
+  }
+
+  function importDeckFromOfficialFormat(textString) {
+    try {
+      const data = { deck: [], sideDeck: [] };
+      let section = 'main'; // 'main' | 'side' | 'extra'
+
+      for (const rawLine of textString.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        if (/^mazo\s*principal$/i.test(line)) { section = 'main'; continue; }
+        if (/^side\s*deck$/i.test(line)) { section = 'side'; continue; }
+        if (/^mazo\s*extra$/i.test(line) || /^extra\s*deck$/i.test(line)) { section = 'extra'; continue; }
+        if (/^\(.+\)$/.test(line)) continue; // faction header, e.g. "(Mercurio)"
+        if (section === 'extra') continue;
+
+        const match = line.match(/^(.+)\s+x(\d+)$/i);
+        if (!match) throw new Error('Línea inválida: ' + line);
+        const name = match[1].trim();
+        const count = Number(match[2]);
+        if (!Number.isSafeInteger(count) || count <= 0) throw new Error('Cantidad inválida: ' + line);
+
+        const entry = { name, cardId: name, count };
+        if (section === 'side') data.sideDeck.push(entry);
+        else data.deck.push(entry);
+      }
+
+      if (!data.deck.length && !data.sideDeck.length) throw new Error('No se encontraron cartas en el texto.');
+      return importDeckFromJSON(JSON.stringify(data));
+    } catch (err) {
+      return { success: false, error: err.message, reason: err.message };
+    }
   }
 
   // ── Saved decks (browser storage) ────────────────────────────────────────────
@@ -998,7 +1170,57 @@ function escapeHtml(value) {
   // 4. SOUND SYNTHESIS
   // ==========================================================================
   let audioCtx = null;
-  let soundEnabled = true;
+  // ==================== VOLUMEN (música y efectos) ====================
+  // Cada volumen va de 0 a 1 y se recuerda en localStorage. 0 equivale a silencio.
+  const BGM_DEFAULT_VOLUME = 0.3;
+  const SFX_DEFAULT_VOLUME = 0.7;
+  const BGM_VOLUME_KEY = 'aetherium_bgm_volume';
+  const SFX_VOLUME_KEY = 'aetherium_sfx_volume';
+  const LEGACY_SOUND_KEY = 'aetherium_sound_enabled'; // interruptor de silencio anterior
+
+  let bgmVolume = BGM_DEFAULT_VOLUME;
+  let sfxVolume = SFX_DEFAULT_VOLUME;
+
+  function clampVolume(value, fallback) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+  }
+
+  function readStored(key) {
+    try { return localStorage.getItem(key); } catch (err) { return null; }
+  }
+
+  function saveVolume(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (err) {}
+  }
+
+  function initSoundState() {
+    const bgm = readStored(BGM_VOLUME_KEY);
+    const sfx = readStored(SFX_VOLUME_KEY);
+    // Quien había silenciado todo con el interruptor anterior sigue en silencio.
+    const wasMuted = bgm === null && sfx === null && readStored(LEGACY_SOUND_KEY) === 'false';
+    bgmVolume = wasMuted ? 0 : clampVolume(bgm, BGM_DEFAULT_VOLUME);
+    sfxVolume = wasMuted ? 0 : clampVolume(sfx, SFX_DEFAULT_VOLUME);
+  }
+
+  function getBgmVolume() { return bgmVolume; }
+  function getSfxVolume() { return sfxVolume; }
+
+  function setBgmVolume(value) {
+    bgmVolume = clampVolume(value, bgmVolume);
+    saveVolume(BGM_VOLUME_KEY, bgmVolume);
+    if (bgmAudio) bgmAudio.volume = bgmVolume;
+    if (bgmVolume > 0) startMusic(); else pauseMusic();
+    return bgmVolume;
+  }
+
+  function setSfxVolume(value) {
+    sfxVolume = clampVolume(value, sfxVolume);
+    saveVolume(SFX_VOLUME_KEY, sfxVolume);
+    return sfxVolume;
+  }
+
 
   function getAudioContext() {
     if (!audioCtx) {
@@ -1011,11 +1233,20 @@ function escapeHtml(value) {
     return audioCtx;
   }
 
-  function isSoundEnabled() { return soundEnabled; }
-  function toggleSound() { soundEnabled = !soundEnabled; return soundEnabled; }
+  // Los efectos sintetizados pasan por un nodo de ganancia común que aplica el volumen de efectos
+  // (con el valor por defecto suenan igual que antes).
+  let sfxBus = null;
+  function getSfxBus(ctx) {
+    if (!sfxBus) {
+      sfxBus = ctx.createGain();
+      sfxBus.connect(ctx.destination);
+    }
+    sfxBus.gain.value = sfxVolume / SFX_DEFAULT_VOLUME;
+    return sfxBus;
+  }
 
   function playTone(freq, type = 'sine', duration = 0.08, gainVal = 0.1) {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -1026,7 +1257,7 @@ function escapeHtml(value) {
       gain.gain.setValueAtTime(gainVal, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getSfxBus(ctx));
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch (e) {}
@@ -1037,10 +1268,162 @@ function escapeHtml(value) {
   function playCardRemove() { playTone(240, 'sawtooth', 0.08, 0.09); }
   function playClick() { playTone(780, 'sine', 0.03, 0.05); }
   function playShuffle() {
-    if (!soundEnabled) return;
+    if (sfxVolume <= 0) return;
     for (let i = 0; i < 4; i++) {
       setTimeout(() => playTone(300 + Math.random() * 300, 'triangle', 0.04, 0.06), i * 45);
     }
+  }
+
+  // ==================== ARCHIVOS DE AUDIO (snd/bgm y snd/sfx) ====================
+  // Igual que cartas/pool-manifest.json: GitHub Pages no lista carpetas, así que los
+  // nombres salen de snd/sound-manifest.json ({ "bgm": [...], "sfx": [...] }), que se
+  // regenera con `node tests/generate-sound-manifest.cjs` tras sumar o sacar archivos.
+  // Sin manifest (file://, host sin snd/) no pasa nada: no hay música y los efectos
+  // vuelven a los sonidos sintetizados.
+  const SOUND_MANIFEST_PATH = 'snd/sound-manifest.json';
+  const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg)$/i;
+  const AUDIO_LOAD_TIMEOUT_MS = 8000;
+  const GESTURE_EVENTS = ['pointerdown', 'pointerup', 'keydown', 'touchend'];
+
+  let bgmCandidates = [];   // URLs de snd/bgm listadas en el manifest
+  let sfxPlayable = [];     // URLs de snd/sfx que el navegador pudo cargar
+  let bgmAudio = null;      // pista elegida (en loop)
+  let bgmLoading = false;
+  let bgmWaitingForGesture = false;
+
+  function audioUrl(folder, name) {
+    return 'snd/' + folder + '/' + name.split('/').map(encodeURIComponent).join('/');
+  }
+
+  function shuffled(list) {
+    const copy = list.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  // Resuelve con el elemento <audio> si el archivo carga (existe y es decodificable), o con null.
+  function probeAudio(url) {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      let settled = false;
+      const finish = (ok) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(ok ? audio : null);
+      };
+      const timer = setTimeout(() => finish(false), AUDIO_LOAD_TIMEOUT_MS);
+      audio.addEventListener('loadedmetadata', () => finish(true), { once: true });
+      audio.addEventListener('error', () => finish(false), { once: true });
+      audio.preload = 'auto';
+      audio.src = url;
+    });
+  }
+
+  async function fetchSoundManifest() {
+    try {
+      const res = await fetch(SOUND_MANIFEST_PATH, { cache: 'no-cache' });
+      if (!res.ok) return null;
+      const manifest = await res.json();
+      return manifest && typeof manifest === 'object' ? manifest : null;
+    } catch (err) {
+      return null; // file:// o manifest inexistente: sin archivos de audio
+    }
+  }
+
+  function manifestUrls(manifest, folder) {
+    const names = Array.isArray(manifest[folder]) ? manifest[folder] : [];
+    return names.filter(n => typeof n === 'string' && AUDIO_EXTENSIONS.test(n)).map(n => audioUrl(folder, n));
+  }
+
+  // Lee el manifest, valida los efectos y arranca la música. No bloquea el arranque: llamar sin await.
+  // Requiere haber llamado antes a initSoundState() para conocer los volúmenes guardados.
+  async function initAudioFiles() {
+    const manifest = await fetchSoundManifest();
+    if (!manifest) return;
+
+    bgmCandidates = manifestUrls(manifest, 'bgm');
+    if (bgmVolume > 0) startMusic();
+
+    const probed = await Promise.all(manifestUrls(manifest, 'sfx').map(async (url) => (await probeAudio(url)) ? url : null));
+    sfxPlayable = probed.filter(Boolean);
+  }
+
+  // Elige una pista al azar entre las válidas (baraja y toma la primera que carga) y la deja en loop.
+  async function startMusic() {
+    if (bgmVolume <= 0 || bgmLoading) return;
+    if (bgmAudio) { tryPlayMusic(); return; }
+    if (!bgmCandidates.length) return;
+
+    bgmLoading = true;
+    try {
+      for (const url of shuffled(bgmCandidates)) {
+        const audio = await probeAudio(url);
+        if (audio) {
+          audio.loop = true;
+          audio.volume = bgmVolume;
+          bgmAudio = audio;
+          break;
+        }
+      }
+    } finally {
+      bgmLoading = false;
+    }
+    if (bgmAudio) tryPlayMusic();
+  }
+
+  function pauseMusic() {
+    if (bgmAudio) bgmAudio.pause();
+  }
+
+  // Los navegadores bloquean el audio hasta el primer gesto del usuario: si falla, se reintenta en el próximo.
+  function tryPlayMusic() {
+    if (!bgmAudio || bgmVolume <= 0 || !bgmAudio.paused) return;
+    try {
+      const playing = bgmAudio.play();
+      if (playing && typeof playing.catch === 'function') playing.catch(waitForGestureToPlayMusic);
+    } catch (err) {
+      waitForGestureToPlayMusic();
+    }
+  }
+
+  function waitForGestureToPlayMusic() {
+    if (bgmWaitingForGesture) return;
+    bgmWaitingForGesture = true;
+    const retry = () => {
+      GESTURE_EVENTS.forEach(name => document.removeEventListener(name, retry, true));
+      bgmWaitingForGesture = false;
+      tryPlayMusic();
+    };
+    GESTURE_EVENTS.forEach(name => document.addEventListener(name, retry, true));
+  }
+
+  // Reproduce un efecto al azar de snd/sfx. Devuelve false si no hay ninguno válido.
+  function playSfxFile() {
+    if (!sfxPlayable.length) return false;
+    try {
+      const audio = new Audio(sfxPlayable[Math.floor(Math.random() * sfxPlayable.length)]);
+      audio.volume = sfxVolume;
+      const playing = audio.play();
+      if (playing && typeof playing.catch === 'function') playing.catch(() => {});
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  // Clic derecho: agregar / quitar carta. Sin archivos en snd/sfx suena el efecto sintetizado de siempre.
+  function playCardAddSfx() {
+    if (sfxVolume <= 0) return;
+    if (!playSfxFile()) playCardDrop();
+  }
+
+  function playCardRemoveSfx() {
+    if (sfxVolume <= 0) return;
+    if (!playSfxFile()) playCardRemove();
   }
 
   // ==========================================================================
@@ -1142,7 +1525,24 @@ function escapeHtml(value) {
     wrapper.addEventListener('dragstart', reset);
   }
 
-  function openCardInspector(cardId) {
+  // Ids of the cards in whichever list (Mazo Principal / Side / Extra / Colección)
+  // the inspector was opened from, in the same order they're shown there — used
+  // so the nav arrows know what "previous"/"next" means. Main/Side/Extra are
+  // recomputed live from state every render; Colección's filtered+sorted list is
+  // supplied by the caller as `contextIds`, since it depends on the active
+  // search/filter/sort — passed forward unchanged across toggle/add/remove/nav
+  // re-renders of the same inspector session.
+  function getContextCardIds(context, providedIds) {
+    switch (context) {
+      case 'main': return state.deck.map(item => item.cardId);
+      case 'side': return state.sideDeck.map(item => item.cardId);
+      case 'extra': return getActiveExtraDeckTokens().map(token => token.id);
+      default: return Array.isArray(providedIds) ? providedIds : [];
+    }
+  }
+
+  function openCardInspector(cardId, options = {}) {
+    const { target = 'main', context = 'library', contextIds: providedContextIds = null } = options;
     const card = getCardById(cardId);
     if (!card) return;
 
@@ -1152,11 +1552,18 @@ function escapeHtml(value) {
 
     playClick();
 
+    const contextIds = getContextCardIds(context, providedContextIds);
+    const contextIndex = contextIds.indexOf(card.id);
+    const hasPrev = contextIndex > 0;
+    const hasNext = contextIndex !== -1 && contextIndex < contextIds.length - 1;
+
     const elementInfo = ELEMENTS[card.element] || ELEMENTS.neutral;
     const currentInMain = getCardCountInDeck(card.id, 'main');
+    const currentInSide = getCardCountInDeck(card.id, 'side');
     const currentCombined = getCombinedCardCount(card.id);
     const maxCopies = getMaxAllowedCopies(card.id);
     const isSello = card.type === 'Sello' || card.isSello || !card.rarity;
+    const isToken = card.type === 'Token' || card.isToken;
     const banlistLimit = getBanlistLimit(card.id);
     const banlisted = banlistLimit !== undefined;
 
@@ -1166,9 +1573,19 @@ function escapeHtml(value) {
         ? `<span class="inspector-badge" style="background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid #10b981;">🏛️ Sello (Sin Límite)</span>`
         : `<span class="inspector-badge" style="background: rgba(255,255,255,0.06); color: #fbbf24; border: 1px solid #fbbf24;">💎 ${escapeHtml(card.rarity)}</span>`);
 
+    const targetLabel = target === 'side' ? 'Side Deck' : 'Mazo Principal';
+    const targetCount = target === 'side' ? currentInSide : currentInMain;
+    const addResolvedTarget = target === 'side'
+      ? 'side'
+      : (getDeckTotalCount('main') >= state.maxDeckSize ? 'side' : 'main');
+
     const addBtnText = isSello && !banlisted
-      ? `<span>+</span> Agregar al Mazo (x${currentInMain})`
-      : `<span>+</span> Agregar al Mazo (${currentCombined}/${maxCopies})`;
+      ? `<span>+</span> Agregar a ${targetLabel} (x${targetCount})`
+      : `<span>+</span> Agregar a ${targetLabel} (${currentCombined}/${maxCopies})`;
+    const removeBtnText = `<span>−</span> Quitar de ${targetLabel} (x${targetCount})`;
+
+    const canAdd = !isToken && canAddCardToDeck(card.id, addResolvedTarget).allowed;
+    const canRemove = !isToken && targetCount > 0;
 
     content.innerHTML = `
       <div class="inspector-card-col" id="inspector-card-container">
@@ -1178,7 +1595,7 @@ function escapeHtml(value) {
         <div class="inspector-name">${escapeHtml(card.name)}</div>
         <div class="inspector-meta-row">
           <span class="inspector-badge" style="background: ${elementInfo.glow}; color: #ffffff; border: 1px solid ${elementInfo.color};">
-            ${elementInfo.icon} ${elementInfo.name}
+            ${renderElementIcon(card.element)} ${elementInfo.name}
           </span>
           <span class="inspector-badge" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid var(--border-medium);">
             ${escapeHtml(card.type)}
@@ -1205,11 +1622,20 @@ function escapeHtml(value) {
           ${escapeHtml(card.flavor)}
         </div>
 
-        <div class="inspector-actions">
-          <button id="btn-inspector-add" class="btn btn-primary" ${!canAddCardToDeck(card.id, 'main').allowed ? 'disabled' : ''}>
-            ${addBtnText}
-          </button>
-        </div>
+        ${!isToken ? `
+          <div class="inspector-target-toggle" role="group" aria-label="Elegir mazo destino">
+            <button type="button" class="target-toggle-btn ${target === 'main' ? 'active' : ''}" data-target="main">Mazo Principal</button>
+            <button type="button" class="target-toggle-btn ${target === 'side' ? 'active' : ''}" data-target="side">Side Deck</button>
+          </div>
+          <div class="inspector-actions">
+            <button id="btn-inspector-remove" class="btn btn-secondary" ${!canRemove ? 'disabled' : ''}>
+              ${removeBtnText}
+            </button>
+            <button id="btn-inspector-add" class="btn btn-primary" ${!canAdd ? 'disabled' : ''}>
+              ${addBtnText}
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -1226,15 +1652,49 @@ function escapeHtml(value) {
       });
     }
 
+    content.querySelectorAll('.target-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.target === target) return;
+        playClick();
+        openCardInspector(card.id, { target: btn.dataset.target, context, contextIds: providedContextIds });
+      });
+    });
+
     const addBtn = content.querySelector('#btn-inspector-add');
     if (addBtn) {
       addBtn.addEventListener('click', () => {
-        const result = addCardToDeck(card.id, 'main');
+        const result = addCardToDeck(card.id, addResolvedTarget);
         if (result.success) {
           playCardDrop();
-          openCardInspector(card.id);
+          openCardInspector(card.id, { target, context, contextIds: providedContextIds });
         }
       });
+    }
+
+    const removeBtn = content.querySelector('#btn-inspector-remove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        removeCardFromDeck(card.id, false, target);
+        playCardRemove();
+        openCardInspector(card.id, { target, context, contextIds: providedContextIds });
+      });
+    }
+
+    const prevBtn = document.getElementById('btn-inspector-prev');
+    const nextBtn = document.getElementById('btn-inspector-next');
+    if (prevBtn) {
+      prevBtn.disabled = !hasPrev;
+      prevBtn.onclick = () => {
+        if (!hasPrev) return;
+        openCardInspector(contextIds[contextIndex - 1], { target, context, contextIds: providedContextIds });
+      };
+    }
+    if (nextBtn) {
+      nextBtn.disabled = !hasNext;
+      nextBtn.onclick = () => {
+        if (!hasNext) return;
+        openCardInspector(contextIds[contextIndex + 1], { target, context, contextIds: providedContextIds });
+      };
     }
 
     if (!modal.classList.contains('is-open')) modal.returnFocus = document.activeElement;
@@ -1398,7 +1858,7 @@ function initCardInspector() {
       if (!cardWrapper) return;
       const cardId = cardWrapper.dataset.cardId;
       if (!cardId) return;
-      openCardInspector(cardId);
+      openCardInspector(cardId, { target, context: target });
     });
 
     // Right click on a card: remove 1 copy from this deck
@@ -1409,7 +1869,7 @@ function initCardInspector() {
       const cardId = cardWrapper.dataset.cardId;
       if (!cardId) return;
       removeCardFromDeck(cardId, false, target);
-      playCardRemove();
+      playCardRemoveSfx();
     });
 
     gridEl.addEventListener('dblclick', (e) => {
@@ -1450,7 +1910,7 @@ function initCardInspector() {
       extraDeckGrid.addEventListener('click', (e) => {
         const cardWrapper = e.target.closest('.tcg-card-wrapper');
         if (cardWrapper && cardWrapper.dataset.cardId) {
-          openCardInspector(cardWrapper.dataset.cardId);
+          openCardInspector(cardWrapper.dataset.cardId, { context: 'extra' });
         }
       });
     }
@@ -1681,7 +2141,7 @@ function initCardInspector() {
         badge.className = 'planet-dot-badge';
         badge.style.background = info.glow;
         badge.style.borderColor = info.color;
-        badge.innerHTML = `${info.icon} ${info.name}: <strong>${count}</strong>`;
+        badge.innerHTML = `${renderElementIcon(planetKey)} ${info.name}: <strong>${count}</strong>`;
         dotsContainer.appendChild(badge);
       });
     }
@@ -1803,7 +2263,7 @@ function initCardInspector() {
       libraryGrid.addEventListener('click', (e) => {
         const cardWrapper = e.target.closest('.tcg-card-wrapper');
         if (cardWrapper && cardWrapper.dataset.cardId) {
-          openCardInspector(cardWrapper.dataset.cardId);
+          openCardInspector(cardWrapper.dataset.cardId, { context: 'library', contextIds: getVisibleLibraryCardIds() });
         }
       });
 
@@ -1821,7 +2281,7 @@ function initCardInspector() {
         const check = canAddCardToDeck(cardId, target);
         if (check.allowed) {
           addCardToDeck(cardId, target);
-          playCardDrop();
+          playCardAddSfx();
           const card = CARDS_DATA.find(c => c.id === cardId);
           showToast(`Agregado: ${card ? card.name : 'Carta'} al ${target === 'side' ? 'Side Deck' : 'mazo'}`, 'success');
         } else {
@@ -1847,14 +2307,7 @@ function initCardInspector() {
     Common: 1
   };
 
-  function renderLibrary() {
-    const libraryGrid = document.getElementById('library-grid');
-    const emptyState = document.getElementById('library-empty');
-    const filteredCountElem = document.getElementById('filtered-card-count');
-    const totalCountElem = document.getElementById('total-card-count');
-
-    if (!libraryGrid) return;
-
+  function getFilteredSortedCards() {
     const { search, element, type, rarity, maxMana, sort } = state.filters;
 
     let filtered = CARDS_DATA.filter(card => {
@@ -1889,12 +2342,33 @@ function initCardInspector() {
         case 'cost-desc': return b.cost - a.cost || a.name.localeCompare(b.name);
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
+        case 'rarity-asc': return (RARITY_WEIGHT[a.rarity] || 0) - (RARITY_WEIGHT[b.rarity] || 0) || a.cost - b.cost;
         case 'rarity-desc': return (RARITY_WEIGHT[b.rarity] || 0) - (RARITY_WEIGHT[a.rarity] || 0) || a.cost - b.cost;
         case 'attack-desc': return (b.attack || 0) - (a.attack || 0) || a.cost - b.cost;
         case 'health-desc': return (b.health || 0) - (a.health || 0) || a.cost - b.cost;
         default: return 0;
       }
     });
+
+    return filtered;
+  }
+
+  // Exposes the Colección grid's current filtered + sorted card ids, in the same
+  // order they're rendered in, so the inspector's prev/next navigation can walk
+  // through exactly what the user is looking at.
+  function getVisibleLibraryCardIds() {
+    return getFilteredSortedCards().map(card => card.id);
+  }
+
+  function renderLibrary() {
+    const libraryGrid = document.getElementById('library-grid');
+    const emptyState = document.getElementById('library-empty');
+    const filteredCountElem = document.getElementById('filtered-card-count');
+    const totalCountElem = document.getElementById('total-card-count');
+
+    if (!libraryGrid) return;
+
+    const filtered = getFilteredSortedCards();
 
     const nonTokenTotal = CARDS_DATA.filter(c => c.type !== 'Token' && !c.isToken).length;
     if (totalCountElem) totalCountElem.textContent = nonTokenTotal;
@@ -2173,8 +2647,8 @@ function initCardInspector() {
     if (openBtn) {
       openBtn.addEventListener('click', () => {
         const totalCount = getDeckTotalCount();
-        if (totalCount < 5) {
-          showToast('Necesitas al menos 5 cartas en el mazo para simular una mano inicial.', 'warning');
+        if (totalCount < 6) {
+          showToast('Necesitas al menos 6 cartas en el mazo para simular una mano inicial.', 'warning');
           return;
         }
         playShuffle();
@@ -2204,8 +2678,8 @@ function initCardInspector() {
     const fullDeck = buildFullDeckArray();
     const shuffled = shuffleArray(fullDeck);
 
-    currentHand = shuffled.slice(0, 5).map(card => ({ card, selectedForMulligan: false }));
-    remainingDeck = shuffled.slice(5);
+    currentHand = shuffled.slice(0, 6).map(card => ({ card, selectedForMulligan: false }));
+    remainingDeck = shuffled.slice(6);
 
     renderHand();
   }
@@ -2317,21 +2791,59 @@ function initCardInspector() {
     }, 2800);
   }
 
-  function initSoundButton() {
-    const btn = document.getElementById('btn-sound-toggle');
-    const icon = document.getElementById('sound-icon');
+  // ==================== VOLUMEN (MÚSICA / EFECTOS) ====================
+  function initVolumeControl() {
+    const root = document.getElementById('volume-control');
+    const btn = document.getElementById('btn-volume');
+    const panel = document.getElementById('volume-panel');
+    const icon = document.getElementById('volume-icon');
+    if (!root || !btn || !panel) return;
+
+    initSoundState();
+
+    const sliders = [
+      { input: document.getElementById('volume-bgm'), output: document.getElementById('volume-bgm-value'), get: getBgmVolume, set: setBgmVolume, preview: false },
+      { input: document.getElementById('volume-sfx'), output: document.getElementById('volume-sfx-value'), get: getSfxVolume, set: setSfxVolume, preview: true }
+    ];
+
     const updateIcon = () => {
-      if (icon) icon.textContent = isSoundEnabled() ? '🔊' : '🔇';
+      if (icon) icon.textContent = getBgmVolume() === 0 && getSfxVolume() === 0 ? '🔇' : '🔊';
     };
 
-    updateIcon();
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const enabled = toggleSound();
+    const paint = (s) => {
+      const pct = Math.round(s.get() * 100);
+      s.input.value = pct;
+      s.input.style.setProperty('--fill', pct + '%');
+      if (s.output) s.output.textContent = pct + '%';
+    };
+
+    for (const s of sliders) {
+      if (!s.input) continue;
+      paint(s);
+      s.input.addEventListener('input', () => {
+        s.set(Number(s.input.value) / 100);
+        paint(s);
         updateIcon();
-        showToast(enabled ? 'Efectos de sonido activados' : 'Efectos de sonido silenciados', 'info');
       });
+      // Al soltar el slider de efectos suena uno de muestra para juzgar el nivel.
+      if (s.preview) s.input.addEventListener('change', () => playCardAddSfx());
     }
+    updateIcon();
+
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    btn.addEventListener('click', () => setOpen(panel.hidden));
+    document.addEventListener('pointerdown', (e) => {
+      if (!panel.hidden && !root.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) {
+        setOpen(false);
+        btn.focus();
+      }
+    });
   }
 
   function initPoolUpdatesButton() {
@@ -2405,6 +2917,7 @@ function initCardInspector() {
 
     const textArea = document.getElementById('export-text-area');
     const jsonArea = document.getElementById('export-json-area');
+    const officialArea = document.getElementById('export-official-area');
     const tabButtons = modal ? modal.querySelectorAll('.tab-btn') : [];
 
     let currentTab = 'tab-text-deck';
@@ -2415,16 +2928,9 @@ function initCardInspector() {
         btn.classList.add('active');
         currentTab = btn.dataset.tab;
 
-        const tabText = document.getElementById('tab-text-deck');
-        const tabJson = document.getElementById('tab-json-deck');
-
-        if (currentTab === 'tab-text-deck') {
-          if (tabText) tabText.classList.add('active');
-          if (tabJson) tabJson.classList.remove('active');
-        } else {
-          if (tabText) tabText.classList.remove('active');
-          if (tabJson) tabJson.classList.add('active');
-        }
+        modal.querySelectorAll('.tab-content').forEach(tabEl => {
+          tabEl.classList.toggle('active', tabEl.id === currentTab);
+        });
         playClick();
       });
     });
@@ -2434,6 +2940,7 @@ function initCardInspector() {
         playClick();
         if (textArea) textArea.value = exportDeckToText();
         if (jsonArea) jsonArea.value = exportDeckToJSON();
+        if (officialArea) officialArea.value = exportDeckToOfficialFormat();
         if (modal) modal.classList.add('is-open');
       });
     }
@@ -2448,7 +2955,10 @@ function initCardInspector() {
     if (copyBtn) {
       copyBtn.addEventListener('click', async () => {
         playClick();
-        const contentToCopy = currentTab === 'tab-text-deck' ? (textArea ? textArea.value : '') : (jsonArea ? jsonArea.value : '');
+        let contentToCopy = '';
+        if (currentTab === 'tab-text-deck') contentToCopy = textArea ? textArea.value : '';
+        else if (currentTab === 'tab-json-deck') contentToCopy = jsonArea ? jsonArea.value : '';
+        else contentToCopy = officialArea ? officialArea.value : '';
         try {
           await navigator.clipboard.writeText(contentToCopy);
           showToast('¡Copiado al portapapeles con éxito!', 'success');
@@ -2464,8 +2974,10 @@ function initCardInspector() {
         let res;
         if (currentTab === 'tab-text-deck') {
           res = importDeckFromText(textArea ? textArea.value : '');
-        } else {
+        } else if (currentTab === 'tab-json-deck') {
           res = importDeckFromJSON(jsonArea ? jsonArea.value : '');
+        } else {
+          res = importDeckFromOfficialFormat(officialArea ? officialArea.value : '');
         }
 
         if (res.success) {
@@ -2885,20 +3397,82 @@ function initCardInspector() {
   }
 
   /** Loads whatever the base pool already has cached; called once on app startup, no folder access needed. */
-  function initPoolCards() {
-    return openDB()
-      .then(loadSavedPoolCards)
-      .then(cards => {
-        cards.forEach(card => {
-          if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
-        });
-        return cards;
-      })
-      .catch(() => []);
+  async function initPoolCards() {
+    let cachedCards = [];
+    try {
+      cachedCards = await openDB().then(loadSavedPoolCards);
+    } catch (err) {
+      cachedCards = [];
+    }
+    cachedCards.forEach(card => {
+      if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
+    });
+
+    await loadPoolFromServer();
+
+    return CARDS_DATA.filter(c => c.isPool);
   }
 
   function isPoolUpdateSupported() {
     return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+  }
+
+  // ── Server-side loading (works on GitHub Pages, Netlify, any HTTP host, and on
+  //    phones/browsers without showDirectoryPicker) ─────────────────────────────
+  const MANIFEST_PATH = 'cartas/pool-manifest.json';
+  const CATALOG_PATH = 'cartas/catalogo-original.json';
+
+  async function fetchJSON(path) {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  /** Same shape as readCatalog(dirHandle), but fetched over HTTP instead of read from a picked folder. */
+  async function loadCatalogFromServer() {
+    try {
+      const parsed = await fetchJSON(CATALOG_PATH);
+      const list = Array.isArray(parsed) ? parsed : (parsed.cards || []);
+      const map = new Map();
+      for (const entry of list) {
+        if (entry && typeof entry.archivo === 'string') {
+          map.set(entry.archivo.replace(/\\/g, '/'), entry);
+        }
+      }
+      return map;
+    } catch (err) {
+      return new Map(); // optional file: filename-only parsing still works without it
+    }
+  }
+
+  /**
+   * Builds the base pool from cartas/pool-manifest.json + the images already
+   * committed alongside the app, referencing each image by its plain relative URL
+   * (no download, no base64 conversion — the browser only fetches an image once it
+   * actually scrolls into view, same as any other <img loading="lazy">).
+   * Silently does nothing if the manifest can't be fetched: opened via file://,
+   * running on a host that doesn't serve cartas/, or the manifest doesn't exist yet.
+   */
+  async function loadPoolFromServer() {
+    let manifest;
+    try {
+      manifest = await fetchJSON(MANIFEST_PATH);
+    } catch (err) {
+      return; // no manifest reachable: nothing to do, the folder-picker flow still works
+    }
+    if (!Array.isArray(manifest) || manifest.length === 0) return;
+
+    const catalog = await loadCatalogFromServer();
+    const known = new Set(CARDS_DATA.map(c => c.id));
+
+    for (const relPath of manifest) {
+      const id = 'pool_' + hashPath(relPath);
+      if (known.has(id)) continue;
+      const imageUrl = 'cartas/' + relPath;
+      const card = parsePoolCardFromPath(relPath, imageUrl, catalog.get(relPath));
+      CARDS_DATA.push(card);
+      known.add(card.id);
+    }
   }
 
   // ── Deterministic ids ─────────────────────────────────────────────────────────
@@ -3265,13 +3839,15 @@ function initCardInspector() {
 
     // 2. Load Active Deck State
     loadInitialState();
+    await loadDefaultBanlist(); // cartas/banlist-default.json: límites predefinidos por el repo
 
     // 3. Initialize UI Subsystems
     initDeckView();
     initFilters();
     initDragAndDrop();
     initTestHandModal();
-    initSoundButton();
+    initVolumeControl();
+    initAudioFiles(); // música y efectos de snd/ (no bloquea el arranque)
     initClearDeckButton();
     initExportImportModal();
     initCardImporterModal();

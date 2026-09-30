@@ -7,10 +7,11 @@
  * Banlist: persistent per-card copy limit override (replaces the rarity default).
  */
 
-import { CARDS_DATA, getCardById } from './cardsData.js';
+import { CARDS_DATA, getCardById, getCardByName } from './cardsData.js';
 
 const STORAGE_KEY = 'aetherium_tcg_active_deck';
 const STORAGE_KEY_BANLIST = 'aetherium_tcg_banlist';
+const STORAGE_KEY_BANLIST_IGNORED = 'aetherium_tcg_banlist_ignored_defaults';
 
 export const RARITY_LIMITS = {
   Common: 4,
@@ -105,6 +106,25 @@ function loadBanlistFromLocalStorage() {
   } catch (err) {}
 }
 
+// Nombres (en minúscula) de cartas que el usuario quitó explícitamente de su banlist:
+// cartas/banlist-default.json no las vuelve a aplicar, aunque las siga listando.
+let ignoredDefaultBanlist = new Set();
+
+function saveIgnoredDefaultBanlist() {
+  try {
+    localStorage.setItem(STORAGE_KEY_BANLIST_IGNORED, JSON.stringify([...ignoredDefaultBanlist]));
+  } catch (err) {}
+}
+
+function loadIgnoredDefaultBanlist() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_BANLIST_IGNORED);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) ignoredDefaultBanlist = new Set(parsed.filter(n => typeof n === 'string'));
+  } catch (err) {}
+}
+
 function isValidDeckItem(item) {
   const card = item && getCardById(item.cardId);
   // Tokens cannot be in the main or side deck, and cards must exist in CARDS_DATA
@@ -113,6 +133,7 @@ function isValidDeckItem(item) {
 
 export function loadInitialState() {
   loadBanlistFromLocalStorage();
+  loadIgnoredDefaultBanlist();
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -195,8 +216,56 @@ export function setBanlistLimit(cardId, limit) {
 export function clearBanlistLimit(cardId) {
   if (state.banlist[cardId] === undefined) return;
   delete state.banlist[cardId];
+  const card = getCardById(cardId);
+  if (card) {
+    ignoredDefaultBanlist.add(card.name.trim().toLowerCase());
+    saveIgnoredDefaultBanlist();
+  }
   saveBanlistToLocalStorage();
   notifyBanlistChanged();
+}
+
+/**
+ * Aplica cartas/banlist-default.json: límites predefinidos en el repo para quien
+ * todavía no tiene banlist propia guardada. Nunca pisa un límite que el usuario ya
+ * haya fijado (setBanlistLimit) ni una carta que haya quitado explícitamente
+ * (clearBanlistLimit) — eso siempre gana, hoy y en cualquier visita futura.
+ * `entries` es { [nombre de carta]: límite }; los nombres que no existen en el pool
+ * actual, o que ya tienen un valor propio, se ignoran en silencio.
+ */
+export function applyDefaultBanlistEntries(entries) {
+  if (!entries || typeof entries !== 'object') return;
+  let changed = false;
+  for (const [name, limit] of Object.entries(entries)) {
+    const key = String(name).trim().toLowerCase();
+    if (ignoredDefaultBanlist.has(key)) continue;
+    const card = getCardByName(name);
+    if (!card || card.type === 'Token' || card.isToken) continue;
+    if (state.banlist[card.id] !== undefined) continue;
+    const n = Number(limit);
+    if (!Number.isSafeInteger(n) || n < 0 || n > state.maxDeckSize) continue;
+    state.banlist[card.id] = n;
+    changed = true;
+  }
+  if (changed) {
+    saveBanlistToLocalStorage();
+    notifyBanlistChanged();
+  }
+}
+
+// Lee cartas/banlist-default.json por fetch() (igual que pool-manifest.json y
+// sound-manifest.json: GitHub Pages no permite listar ni ejecutar nada del lado del
+// servidor). Si el archivo no existe o falla (por ejemplo file://), no pasa nada:
+// la app sigue funcionando solo con la banlist propia del usuario.
+export async function loadDefaultBanlist(path = 'cartas/banlist-default.json') {
+  try {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) return;
+    const entries = await res.json();
+    applyDefaultBanlistEntries(entries);
+  } catch (err) {
+    // file:// o archivo ausente: sin banlist predefinida
+  }
 }
 
 /**
@@ -376,19 +445,25 @@ export function setDeckName(name) {
 /**
  * Returns a Set of planet/faction keys currently present in the main deck
  */
+/** Active factions across Main Deck + Side Deck: both feed the automatic Extra Deck (Tokens). */
 export function getActiveFactionsInDeck() {
   const factions = new Set();
-  state.deck.forEach(item => {
-    const card = getCardById(item.cardId);
-    if (card && card.element && card.element !== 'neutral') {
-      factions.add(card.element.toLowerCase());
-    }
-  });
+  const addFactionsFrom = (deckArr) => {
+    deckArr.forEach(item => {
+      const card = getCardById(item.cardId);
+      if (card && card.element && card.element !== 'neutral') {
+        factions.add(card.element.toLowerCase());
+      }
+    });
+  };
+  addFactionsFrom(state.deck);
+  addFactionsFrom(state.sideDeck);
   return factions;
 }
 
 /**
- * Automatically computes the Extra Deck (Tokens) based on active factions in main deck
+ * Automatically computes the Extra Deck (Tokens) based on active factions in
+ * Main Deck + Side Deck combined
  */
 export function getActiveExtraDeckTokens() {
   const activeFactions = getActiveFactionsInDeck();
@@ -451,6 +526,91 @@ export function exportDeckToText() {
   }
 
   return text;
+}
+
+// ── Official site format (export/import) ─────────────────────────────────────
+// Matches the format the official card game site produces when exporting a deck:
+// section headers "Mazo principal" / "Sidedeck", cards grouped under "(Faccion)"
+// headers (one per element present in that section), with the Sello of that
+// faction listed first when present, followed by the rest of the cards sorted
+// alphabetically. Faction headers use the plain element key, capitalized
+// (no accents), e.g. "pluton" -> "(Pluton)", even though the card itself is
+// named "Sello de Plutón".
+function capitalizeFactionKey(key) {
+  if (!key) return 'Arcano';
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function buildOfficialSection(deckArr) {
+  const byFaction = new Map(); // elementKey -> { sello: {name,count}|null, others: [{name,count}] }
+
+  deckArr.forEach(item => {
+    const card = getCardById(item.cardId);
+    if (!card) return;
+    const key = card.element || 'neutral';
+    if (!byFaction.has(key)) byFaction.set(key, { sello: null, others: [] });
+    const group = byFaction.get(key);
+    if (card.isSello || card.type === 'Sello') {
+      group.sello = { name: card.name, count: item.count };
+    } else {
+      group.others.push({ name: card.name, count: item.count });
+    }
+  });
+
+  const factionKeys = [...byFaction.keys()].sort((a, b) =>
+    capitalizeFactionKey(a).localeCompare(capitalizeFactionKey(b), 'es', { sensitivity: 'base' })
+  );
+
+  return factionKeys.map(key => {
+    const group = byFaction.get(key);
+    const lines = [];
+    if (group.sello) lines.push(`${group.sello.name} x${group.sello.count}`);
+    group.others
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+      .forEach(c => lines.push(`${c.name} x${c.count}`));
+    return `(${capitalizeFactionKey(key)})\n${lines.join('\n')}`;
+  }).join('\n\n');
+}
+
+export function exportDeckToOfficialFormat() {
+  let text = 'Mazo principal\n\n' + buildOfficialSection(state.deck);
+  if (state.sideDeck.length > 0) {
+    text += '\n\nSidedeck\n\n' + buildOfficialSection(state.sideDeck);
+  }
+  return text;
+}
+
+export function importDeckFromOfficialFormat(textString) {
+  try {
+    const data = { deck: [], sideDeck: [] };
+    let section = 'main'; // 'main' | 'side' | 'extra'
+
+    for (const rawLine of textString.split('\n')) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      if (/^mazo\s*principal$/i.test(line)) { section = 'main'; continue; }
+      if (/^side\s*deck$/i.test(line)) { section = 'side'; continue; }
+      if (/^mazo\s*extra$/i.test(line) || /^extra\s*deck$/i.test(line)) { section = 'extra'; continue; }
+      if (/^\(.+\)$/.test(line)) continue; // faction header, e.g. "(Mercurio)"
+      if (section === 'extra') continue;
+
+      const match = line.match(/^(.+)\s+x(\d+)$/i);
+      if (!match) throw new Error('Línea inválida: ' + line);
+      const name = match[1].trim();
+      const count = Number(match[2]);
+      if (!Number.isSafeInteger(count) || count <= 0) throw new Error('Cantidad inválida: ' + line);
+
+      const entry = { name, cardId: name, count };
+      if (section === 'side') data.sideDeck.push(entry);
+      else data.deck.push(entry);
+    }
+
+    if (!data.deck.length && !data.sideDeck.length) throw new Error('No se encontraron cartas en el texto.');
+    return importDeckFromJSON(JSON.stringify(data));
+  } catch (err) {
+    return { success: false, error: err.message, reason: err.message };
+  }
 }
 
 // ── Saved decks (browser storage) ────────────────────────────────────────────

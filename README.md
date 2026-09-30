@@ -40,7 +40,7 @@ Deckbuilder personalizado para el TCG Argentino "Rise of Gods"
 | Copias por rareza | Común: **4** · Rara: **3** · Épica: **2** · Legendaria: **1** |
 | Sellos | Sin rareza y **sin límite de copias** (hasta completar las 40) |
 | Tokens | No se agregan a mano: forman el **Mazo Extra**, que es automático |
-| Facciones | Marte, Neptuno, Júpiter, Tierra, Saturno, Mercurio, Urano, Plutón, más **Arcano** (neutral) |
+| Facciones | Marte, Neptuno, Júpiter, Tierra, Saturno, Mercurio, Plutón, más **Arcano** (neutral) |
 | Tipos de carta | Criatura, Hechizo Rápido, Hechizo Lento, Estructura, Artefacto, Sello, Terreno (y Token) |
 
 El indicador de la barra superior muestra el estado del mazo: **Incompleto** (menos de 40), **Listo (40/40)** o **Exceso** (más de 40).
@@ -78,7 +78,7 @@ Nombre_Tipo_Rareza_Planeta_ATK_DEF_Coste.png
 | `Nombre` | `Ares`, `GuerreroMarciano`, `Rayo-Dorado` | `CamelCase` y guiones se convierten en espacios: `GuerreroMarciano` → "Guerrero Marciano" |
 | `Tipo` | `Criatura`, `HechizoRapido`, `HechizoLento`, `Estructura`, `Artefacto`, `Sello`, `Terreno` | **Sin tildes ni espacios.** También se aceptan alias: `Hechizo` (= Lento), `Rapido`, `Lento`, `Monstruo`, `Unidad`, `Reliquia`, `Objeto`, `Campo`, y equivalentes en inglés (`Creature`, `Instant`, `Sorcery`, `Structure`, `Artifact`, `Field`) |
 | `Rareza` | `Comun`, `Rara`, `Epica`, `Legendaria` | Con o sin tilde. También `Common`, `Rare`, `Epic`, `Legendary`, `Mitica` (= Legendaria) |
-| `Planeta` | `Marte`, `Neptuno`, `Jupiter`, `Tierra`, `Saturno`, `Mercurio`, `Urano`, `Pluton`, `Neutral` | Con o sin tilde. Alias por elemento o color: `Fuego`/`Rojo` (Marte), `Agua`/`Azul` (Neptuno), `Oro`/`Dorado` (Júpiter), `Verde`/`Naturaleza` (Tierra), `Morado`/`Violeta` (Saturno), `Plata`/`Gris` (Mercurio), `Hielo`/`Cian`/`Celeste` (Urano), `Vacio`/`Sombra`/`Negro` (Plutón), `Arcano`/`Incoloro` (Neutral) |
+| `Planeta` | `Marte`, `Neptuno`, `Jupiter`, `Tierra`, `Saturno`, `Mercurio`, `Pluton`, `Neutral` | Con o sin tilde. Alias por elemento o color: `Fuego`/`Rojo` (Marte), `Agua`/`Azul` (Neptuno), `Oro`/`Dorado` (Júpiter), `Verde`/`Naturaleza` (Tierra), `Morado`/`Violeta` (Saturno), `Plata`/`Gris` (Mercurio), `Vacio`/`Sombra`/`Negro` (Plutón), `Arcano`/`Incoloro` (Neutral) |
 | `ATK` | `8` | Solo se usa en **Criaturas** (mínimo 0) |
 | `DEF` | `6` | Solo se usa en **Criaturas** (mínimo 1) |
 | `Coste` | `7` | Coste de maná, de 0 a 20 |
@@ -88,7 +88,7 @@ Ejemplos:
 ```
 Ares_Criatura_Legendaria_Marte_8_6_7.png
 Rayo_HechizoRapido_Comun_Jupiter_0_0_1.png
-TorreDeHielo_Estructura_Rara_Urano_0_0_4.png
+TorreDeMareas_Estructura_Rara_Neptuno_0_0_4.png
 ```
 
 > **Tip:** aunque la carta no sea una Criatura, completá siempre los 7 campos (usá `0_0` para ATK/DEF). Si faltan campos, el último valor del nombre se interpreta como coste y podés obtener resultados inesperados.
@@ -286,7 +286,7 @@ Formato legible, una carta por línea:
 // Main Deck (40/40 cartas):
 4x Rayo [Common] (JUPITER)
 3x Ares [Rare] (MARTE)
-1x Torre De Hielo [Legendary] (URANO)
+1x Torre De Mareas [Legendary] (NEPTUNO)
 12x Sello De Marte [Sello] (MARTE)
 
 // Extra Deck (Tokens Automáticos):
@@ -376,3 +376,5 @@ Ejecutá `node tests/regression.cjs` para comprobar, tanto en los módulos como 
 Con Playwright disponible y Microsoft Edge instalado, `node tests/browser.cjs` verifica la importación del catálogo, los cierres del inspector, la persistencia, los límites y la selección de cartas en la mano. Usa un perfil aislado. La variable opcional `SCREENSHOT_PATH` permite guardar una captura del detalle.
 
 La identidad visual es STG TCG Deckbuilder. Se mantienen las claves históricas de almacenamiento y el identificador de exportación para conservar la compatibilidad con las colecciones y mazos existentes.
+
+El tema visual de `css/rog-theme.css` está inspirado en [Rise of Gods](https://www.riseofgodstcg.store/): fondos azul noche, acciones coral, controles redondeados y tipografía del sistema disponible sin conexión. Se carga después de los estilos de componentes; mantiene los colores de facción y rareza. En pantallas de hasta 760 px, la biblioteca queda debajo del constructor y la página permite desplazamiento vertical.

@@ -322,3 +322,105 @@
   .nav-brand { gap: 0; }
   .top-navbar { padding-left: 8px; padding-right: 8px; }
 }
+
+/* ── Volume control (música / efectos) ──────────────────────────────────── */
+.volume-control {
+  position: relative;
+  display: inline-flex;
+}
+
+#btn-volume[aria-expanded="true"] {
+  background: rgba(0, 245, 255, 0.10);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+}
+
+.volume-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(260px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75), 0 0 14px rgba(0, 245, 255, 0.12);
+}
+.volume-panel[hidden] { display: none; }
+
+.volume-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "label value" "slider slider";
+  align-items: center;
+  gap: 4px 10px;
+}
+.volume-label {
+  grid-area: label;
+  font-family: var(--font-hud);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.volume-row output {
+  grid-area: value;
+  min-width: 4ch;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cyan);
+}
+
+.volume-slider {
+  grid-area: slider;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  --fill: 0%;
+}
+.volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--cyan) var(--fill), rgba(255, 255, 255, 0.14) var(--fill));
+}
+.volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.volume-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--cyan);
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  border: 1px solid var(--bg-void);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cyan);
+  border: 1px solid var(--bg-void);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+.volume-slider:focus-visible {
+  outline: 1px solid var(--cyan);
+  outline-offset: 3px;
+}

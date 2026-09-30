@@ -6,10 +6,7 @@
   <title>STG TCG Deckbuilder</title>
   <meta name="description" content="Creador de mazos para TCG con Facciones Planetarias, Sellos, Mazo Extra de Tokens automático y Drag and Drop.">
   
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <!-- System fonts keep the visual theme available offline. -->
   
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="css/main.css">
@@ -18,6 +15,7 @@
   <link rel="stylesheet" href="css/library-sidebar.css">
   <link rel="stylesheet" href="css/card.css">
   <link rel="stylesheet" href="css/modals.css">
+  <link rel="stylesheet" href="css/rog-theme.css">
 </head>
 <body class="theme-dark">
   <div id="app-container" class="app-layout">
@@ -25,7 +23,7 @@
     <!-- TOP NAVIGATION BAR -->
     <header class="top-navbar" id="top-navbar">
       <div class="nav-brand">
-        <div class="brand-logo-gem">
+        <div class="brand-logo-gem" aria-hidden="true">
           <div class="gem-inner"></div>
         </div>
         <div class="brand-text">
@@ -76,9 +74,23 @@
           <span class="btn-icon">🗑️</span>
           <span class="btn-label">Limpiar</span>
         </button>
-        <button id="btn-sound-toggle" class="btn btn-icon-only btn-ghost" title="Alternar efectos de sonido">
-          <span id="sound-icon">🔊</span>
-        </button>
+        <div class="volume-control" id="volume-control">
+          <button id="btn-volume" class="btn btn-icon-only btn-ghost" type="button" title="Volumen" aria-label="Volumen" aria-haspopup="true" aria-expanded="false" aria-controls="volume-panel">
+            <span id="volume-icon">🔊</span>
+          </button>
+          <div class="volume-panel" id="volume-panel" role="group" aria-label="Volumen" hidden>
+            <label class="volume-row" for="volume-bgm">
+              <span class="volume-label">Música</span>
+              <output id="volume-bgm-value" for="volume-bgm">30%</output>
+              <input type="range" class="volume-slider" id="volume-bgm" min="0" max="100" step="1" value="30">
+            </label>
+            <label class="volume-row" for="volume-sfx">
+              <span class="volume-label">Efectos</span>
+              <output id="volume-sfx-value" for="volume-sfx">70%</output>
+              <input type="range" class="volume-slider" id="volume-sfx" min="0" max="100" step="1" value="70">
+            </label>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -128,7 +140,7 @@
           <!-- MAIN 40-CARD DECK DROPZONE -->
           <div class="deck-main-section">
             <div class="deck-sub-header">
-              <span class="sub-title">🎴 Mazo Principal (40 cartas)</span>
+              <span class="sub-title">🎴 Mazo Principal</span>
               <div class="deck-sub-header-right">
                 <span class="sub-tip">Límites: 4 Comunes, 3 Raras, 2 Épicas, 1 Legendaria</span>
                 <!-- Main Deck 40-Card Counter -->
@@ -169,9 +181,9 @@
           <!-- SIDE DECK (15 CARDS, SHARES COPY LIMITS WITH MAIN DECK) -->
           <div class="side-deck-section" id="side-deck-panel">
             <div class="deck-sub-header">
-              <span class="sub-title">🗂️ Side Deck (15 cartas)</span>
+              <span class="sub-title">🗂️ Side Deck</span>
               <div class="deck-sub-header-right">
-                <span class="sub-tip">Comparte el límite de copias con el Mazo Principal</span>
+                <span class="sub-tip">Cartas alternativas para BO3</span>
                 <!-- Side Deck Counter -->
                 <div class="deck-count-pill side-deck-count-pill" id="side-deck-count-pill" title="El Side Deck admite hasta 15 cartas y comparte el límite de copias con el Mazo Principal">
                   <span class="count-label">Side:</span>
@@ -241,7 +253,7 @@
         <!-- Sidebar Header with Card Count -->
         <div class="library-header">
           <div class="library-title-row">
-            <h2 class="section-title" title="Clic: ver detalle · Clic derecho o arrastrar: agregar al mazo">Biblioteca de Cartas</h2>
+            <h2 class="section-title" title="Clic: ver detalle · Clic derecho o arrastrar: agregar al mazo">Colección</h2>
             <div class="library-count-badge" id="library-count-badge">
               Mostrando <span id="filtered-card-count">0</span> / <span id="total-card-count">0</span>
             </div>
@@ -274,28 +286,25 @@
                   <span class="elem-badge all">Todos</span>
                 </button>
                 <button class="element-btn" data-element="marte" title="Marte (Fuego y Guerra)">
-                  <span class="elem-badge marte">🔴 Marte</span>
+                  <span class="elem-badge marte"><img class="faction-icon" src="assets/factions/marte.png" alt="" width="20" height="20" draggable="false"> Marte</span>
                 </button>
                 <button class="element-btn" data-element="neptuno" title="Neptuno (Océano y Misticismo)">
-                  <span class="elem-badge neptuno">🔵 Neptuno</span>
+                  <span class="elem-badge neptuno"><img class="faction-icon" src="assets/factions/neptuno.png" alt="" width="20" height="20" draggable="false"> Neptuno</span>
                 </button>
                 <button class="element-btn" data-element="jupiter" title="Júpiter (Tormenta y Oro)">
-                  <span class="elem-badge jupiter">🟠 Júpiter</span>
+                  <span class="elem-badge jupiter"><img class="faction-icon" src="assets/factions/jupiter.png" alt="" width="20" height="20" draggable="false"> Júpiter</span>
                 </button>
                 <button class="element-btn" data-element="tierra" title="Tierra (Naturaleza y Vida)">
-                  <span class="elem-badge tierra">🟢 Tierra</span>
+                  <span class="elem-badge tierra"><img class="faction-icon" src="assets/factions/tierra.png" alt="" width="20" height="20" draggable="false"> Tierra</span>
                 </button>
                 <button class="element-btn" data-element="saturno" title="Saturno (Anillos y Tiempo)">
-                  <span class="elem-badge saturno">🪐 Saturno</span>
+                  <span class="elem-badge saturno"><img class="faction-icon" src="assets/factions/saturno.png" alt="" width="20" height="20" draggable="false"> Saturno</span>
                 </button>
                 <button class="element-btn" data-element="mercurio" title="Mercurio (Azogue y Velocidad)">
-                  <span class="elem-badge mercurio">⚪ Mercurio</span>
-                </button>
-                <button class="element-btn" data-element="urano" title="Urano (Viento y Hielo)">
-                  <span class="elem-badge urano">💠 Urano</span>
+                  <span class="elem-badge mercurio"><img class="faction-icon" src="assets/factions/mercurio.png" alt="" width="20" height="20" draggable="false"> Mercurio</span>
                 </button>
                 <button class="element-btn" data-element="pluton" title="Plutón (Vacío y Sombras)">
-                  <span class="elem-badge pluton">🌌 Plutón</span>
+                  <span class="elem-badge pluton"><img class="faction-icon" src="assets/factions/pluton.png" alt="" width="20" height="20" draggable="false"> Plutón</span>
                 </button>
               </div>
             </div>
@@ -351,7 +360,8 @@
                   <option value="cost-desc">Coste (Mayor a Menor)</option>
                   <option value="name-asc">Nombre (A - Z)</option>
                   <option value="name-desc">Nombre (Z - A)</option>
-                  <option value="rarity-desc">Rareza</option>
+                  <option value="rarity-asc">Rareza (Menor a Mayor)</option>
+                  <option value="rarity-desc">Rareza (Mayor a Menor)</option>
                   <option value="attack-desc">Ataque</option>
                   <option value="health-desc">Vida</option>
                 </select>
@@ -459,12 +469,14 @@
 
     <!-- MODAL: CARD INSPECTOR (3D HD VIEW) -->
     <div class="modal-backdrop" id="modal-card-inspector">
+      <button class="inspector-nav-btn inspector-nav-prev" id="btn-inspector-prev" type="button" aria-label="Carta anterior">&#10094;</button>
       <div class="modal-dialog modal-inspector" role="dialog" aria-modal="true" aria-label="Detalle de carta">
         <button class="modal-close-btn" id="btn-close-inspector" type="button" aria-label="Cerrar detalle">&times;</button>
         <div class="inspector-content" id="inspector-content">
           <!-- Populated dynamically by JS with 3D card and lore -->
         </div>
       </div>
+      <button class="inspector-nav-btn inspector-nav-next" id="btn-inspector-next" type="button" aria-label="Carta siguiente">&#10095;</button>
     </div>
 
     <!-- MODAL: CARD FULLSCREEN ZOOM (reached by clicking the card inside the inspector) -->
@@ -492,7 +504,7 @@
             Prueba cómo iniciaría tu partida con tu mazo de 40 cartas. Haz clic en las cartas que deseas descartar y presiona <strong>Mulligan</strong> para reemplazarlas.
           </p>
           <div class="test-hand-stats" id="test-hand-stats">
-            <span>Mano de 5 cartas</span> &bull; 
+            <span>Mano de 6 cartas</span> &bull; 
             <span id="hand-avg-mana">Coste promedio: 0.0</span>
           </div>
           <div class="test-hand-cards" id="test-hand-cards">
@@ -527,12 +539,16 @@
           <div class="tabs-header">
             <button class="tab-btn active" data-tab="tab-text-deck">Lista de Texto</button>
             <button class="tab-btn" data-tab="tab-json-deck">Código JSON</button>
+            <button class="tab-btn" data-tab="tab-official-deck">Formato Oficial</button>
           </div>
           <div class="tab-content active" id="tab-text-deck">
             <textarea id="export-text-area" class="code-textarea" rows="10" placeholder="Pega tu lista de cartas aquí..."></textarea>
           </div>
           <div class="tab-content" id="tab-json-deck">
             <textarea id="export-json-area" class="code-textarea" rows="10" placeholder="Pega el código JSON del mazo aquí..."></textarea>
+          </div>
+          <div class="tab-content" id="tab-official-deck">
+            <textarea id="export-official-area" class="code-textarea" rows="10" placeholder="Pega aquí el mazo exportado desde la página oficial..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -559,7 +575,7 @@
         </div>
         <div class="modal-body">
           <p class="saved-decks-desc">
-            Guarda el mazo actual (principal y side deck) en este navegador y cárgalo cuando quieras, sin exportar ni importar. Para llevar un mazo a otro equipo usa <strong>Exportar / Importar</strong>.
+            Guarda el mazo actual en este navegador y cárgalo cuando quieras, sin exportar ni importar. Para llevar un mazo a otro equipo usa <strong>Exportar / Importar</strong>.
           </p>
           <div class="saved-deck-save-row">
             <input type="text" id="saved-deck-name-input" class="filter-search-input" maxlength="32" placeholder="Nombre del mazo" autocomplete="off">

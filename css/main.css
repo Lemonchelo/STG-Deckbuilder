@@ -71,8 +71,6 @@
   --color-mercurio:       #c8d8e8;
   --color-mercurio-glow:  rgba(200, 216, 232, 0.45);
 
-  --color-urano:          #00f5ff;
-  --color-urano-glow:     rgba(0, 245, 255, 0.60);
 
   --color-pluton:         #ff0099;
   --color-pluton-glow:    rgba(255, 0, 153, 0.60);
@@ -437,6 +435,21 @@ html, body {
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Local faction assets are decorative; adjacent labels identify each planet. */
+.faction-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.elem-badge, .elem-dot-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ── PLANET-DOT BADGES (deck composition) ────────────────────────────────── */

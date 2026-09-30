@@ -5,10 +5,10 @@
  */
 
 import { state, removeCardFromDeck, getDeckTotalCount, setDeckName, getActiveExtraDeckTokens } from './state.js';
-import { getCardById, ELEMENTS } from './cardsData.js';
+import { getCardById, ELEMENTS, renderElementIcon } from './cardsData.js';
 import { createCardElement, openCardInspector } from './cardInspector.js';
 import { renderManaCurve } from './manaCurve.js';
-import { playCardRemove } from './sound.js';
+import { playCardRemove, playCardRemoveSfx } from './sound.js';
 
 export function initDeckView() {
   const deckGrid = document.getElementById('deck-grid');
@@ -39,7 +39,7 @@ export function initDeckView() {
     extraDeckGrid.addEventListener('click', (e) => {
       const cardWrapper = e.target.closest('.tcg-card-wrapper');
       if (cardWrapper && cardWrapper.dataset.cardId) {
-        openCardInspector(cardWrapper.dataset.cardId);
+        openCardInspector(cardWrapper.dataset.cardId, { context: 'extra' });
       }
     });
   }
@@ -54,7 +54,7 @@ function setupDeckGridInteractions(gridEl, target) {
     if (!cardWrapper) return;
     const cardId = cardWrapper.dataset.cardId;
     if (!cardId) return;
-    openCardInspector(cardId);
+    openCardInspector(cardId, { target, context: target });
   });
 
   // Right click on a card: remove 1 copy from this deck
@@ -65,7 +65,7 @@ function setupDeckGridInteractions(gridEl, target) {
     const cardId = cardWrapper.dataset.cardId;
     if (!cardId) return;
     removeCardFromDeck(cardId, false, target);
-    playCardRemove();
+    playCardRemoveSfx();
   });
 
   gridEl.addEventListener('dblclick', (e) => {
@@ -286,7 +286,7 @@ function updateDeckComposition() {
   };
 
   let elementCounts = {
-    marte: 0, neptuno: 0, jupiter: 0, tierra: 0, saturno: 0, mercurio: 0, urano: 0, pluton: 0, neutral: 0
+    marte: 0, neptuno: 0, jupiter: 0, tierra: 0, saturno: 0, mercurio: 0, pluton: 0, neutral: 0
   };
 
   state.deck.forEach(item => {
@@ -313,7 +313,7 @@ function updateDeckComposition() {
         dotDiv.className = 'elem-dot-item';
         dotDiv.title = `${info ? info.name : elemKey}: ${count} cartas en el mazo`;
         dotDiv.innerHTML = `
-          <span class="elem-dot ${elemKey}"></span>
+          ${renderElementIcon(elemKey)}
           <span>${count}</span>
         `;
         elementDotsContainer.appendChild(dotDiv);

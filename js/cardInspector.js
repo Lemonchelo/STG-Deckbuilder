@@ -2,9 +2,25 @@
  * 3D HOLOGRAPHIC TILT & FULL-CARD RENDERING / INSPECTOR
  */
 
-import { getCardById, ELEMENTS, escapeHtml } from './cardsData.js';
-import { addCardToDeck, canAddCardToDeck, getCardCountInDeck, getCombinedCardCount, getMaxAllowedCopies, getBanlistLimit, isCardBanlisted } from './state.js';
-import { playClick, playCardDrop } from './sound.js';
+import { getCardById, ELEMENTS, escapeHtml, renderElementIcon } from './cardsData.js';
+import { state, addCardToDeck, removeCardFromDeck, canAddCardToDeck, getCardCountInDeck, getCombinedCardCount, getMaxAllowedCopies, getDeckTotalCount, getActiveExtraDeckTokens, getBanlistLimit, isCardBanlisted } from './state.js';
+import { playClick, playCardDrop, playCardRemove } from './sound.js';
+
+// Ids of the cards in whichever list (Mazo Principal / Side / Extra / Colección)
+// the inspector was opened from, in the same order they're shown there — used
+// so the nav arrows know what "previous"/"next" means. Main/Side/Extra are
+// recomputed live from state every render; Colección's filtered+sorted list is
+// supplied by the caller (filterManager.js) as `contextIds`, since it depends
+// on the active search/filter/sort — passed forward unchanged across
+// toggle/add/remove/nav re-renders of the same inspector session.
+function getContextCardIds(context, providedIds) {
+  switch (context) {
+    case 'main': return state.deck.map(item => item.cardId);
+    case 'side': return state.sideDeck.map(item => item.cardId);
+    case 'extra': return getActiveExtraDeckTokens().map(token => token.id);
+    default: return Array.isArray(providedIds) ? providedIds : [];
+  }
+}
 
 /**
  * Generate standard HTML for a Full TCG Card
@@ -122,7 +138,8 @@ export function attach3DTiltEffect(wrapper) {
 /**
  * Open Card Inspector Modal (Full 3D HD View, enlarged)
  */
-export function openCardInspector(cardId) {
+export function openCardInspector(cardId, options = {}) {
+  const { target = 'main', context = 'library', contextIds: providedContextIds = null } = options;
   const card = getCardById(cardId);
   if (!card) return;
 
@@ -132,11 +149,18 @@ export function openCardInspector(cardId) {
 
   playClick();
 
+  const contextIds = getContextCardIds(context, providedContextIds);
+  const contextIndex = contextIds.indexOf(card.id);
+  const hasPrev = contextIndex > 0;
+  const hasNext = contextIndex !== -1 && contextIndex < contextIds.length - 1;
+
   const elementInfo = ELEMENTS[card.element] || ELEMENTS.neutral;
   const currentInMain = getCardCountInDeck(card.id, 'main');
+  const currentInSide = getCardCountInDeck(card.id, 'side');
   const currentCombined = getCombinedCardCount(card.id);
   const maxCopies = getMaxAllowedCopies(card.id);
   const isSello = card.type === 'Sello' || card.isSello || !card.rarity;
+  const isToken = card.type === 'Token' || card.isToken;
   const banlistLimit = getBanlistLimit(card.id);
   const banlisted = banlistLimit !== undefined;
 
@@ -146,9 +170,22 @@ export function openCardInspector(cardId) {
       ? `<span class="inspector-badge" style="background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid #10b981;">🏛️ Sello (Sin Límite)</span>`
       : `<span class="inspector-badge" style="background: rgba(255,255,255,0.06); color: #fbbf24; border: 1px solid #fbbf24;">💎 ${escapeHtml(card.rarity)}</span>`);
 
+  // Which deck the Add/Remove buttons act on. Toggling to Side always targets
+  // Side directly; the default (Main) keeps the existing "Main full -> add to
+  // Side instead" fallback used elsewhere in the app.
+  const targetLabel = target === 'side' ? 'Side Deck' : 'Mazo Principal';
+  const targetCount = target === 'side' ? currentInSide : currentInMain;
+  const addResolvedTarget = target === 'side'
+    ? 'side'
+    : (getDeckTotalCount('main') >= state.maxDeckSize ? 'side' : 'main');
+
   const addBtnText = isSello && !banlisted
-    ? `<span>+</span> Agregar al Mazo (x${currentInMain})`
-    : `<span>+</span> Agregar al Mazo (${currentCombined}/${maxCopies})`;
+    ? `<span>+</span> Agregar a ${targetLabel} (x${targetCount})`
+    : `<span>+</span> Agregar a ${targetLabel} (${currentCombined}/${maxCopies})`;
+  const removeBtnText = `<span>−</span> Quitar de ${targetLabel} (x${targetCount})`;
+
+  const canAdd = !isToken && canAddCardToDeck(card.id, addResolvedTarget).allowed;
+  const canRemove = !isToken && targetCount > 0;
 
   content.innerHTML = `
     <div class="inspector-card-col" id="inspector-card-container">
@@ -159,7 +196,7 @@ export function openCardInspector(cardId) {
       <div class="inspector-name">${escapeHtml(card.name)}</div>
       <div class="inspector-meta-row">
         <span class="inspector-badge" style="background: ${elementInfo.glow}; color: #ffffff; border: 1px solid ${elementInfo.color};">
-          ${elementInfo.icon} ${elementInfo.name}
+          ${renderElementIcon(card.element)} ${elementInfo.name}
         </span>
         <span class="inspector-badge" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid var(--border-medium);">
           ${escapeHtml(card.type)}
@@ -186,11 +223,20 @@ export function openCardInspector(cardId) {
         ${escapeHtml(card.flavor)}
       </div>
 
-      <div class="inspector-actions">
-        <button id="btn-inspector-add" class="btn btn-primary" ${!canAddCardToDeck(card.id, 'main').allowed ? 'disabled' : ''}>
-          ${addBtnText}
-        </button>
-      </div>
+      ${!isToken ? `
+        <div class="inspector-target-toggle" role="group" aria-label="Elegir mazo destino">
+          <button type="button" class="target-toggle-btn ${target === 'main' ? 'active' : ''}" data-target="main">Mazo Principal</button>
+          <button type="button" class="target-toggle-btn ${target === 'side' ? 'active' : ''}" data-target="side">Side Deck</button>
+        </div>
+        <div class="inspector-actions">
+          <button id="btn-inspector-remove" class="btn btn-secondary" ${!canRemove ? 'disabled' : ''}>
+            ${removeBtnText}
+          </button>
+          <button id="btn-inspector-add" class="btn btn-primary" ${!canAdd ? 'disabled' : ''}>
+            ${addBtnText}
+          </button>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -209,16 +255,55 @@ export function openCardInspector(cardId) {
     });
   }
 
+  // Bind Main/Side Target Toggle
+  content.querySelectorAll('.target-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.target === target) return;
+      playClick();
+      openCardInspector(card.id, { target: btn.dataset.target, context, contextIds: providedContextIds });
+    });
+  });
+
   // Bind Add Button
   const addBtn = content.querySelector('#btn-inspector-add');
   if (addBtn) {
     addBtn.addEventListener('click', () => {
-      const result = addCardToDeck(card.id, 'main');
+      const result = addCardToDeck(card.id, addResolvedTarget);
       if (result.success) {
         playCardDrop();
-        openCardInspector(card.id);
+        openCardInspector(card.id, { target, context, contextIds: providedContextIds });
       }
     });
+  }
+
+  // Bind Remove Button
+  const removeBtn = content.querySelector('#btn-inspector-remove');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      removeCardFromDeck(card.id, false, target);
+      playCardRemove();
+      openCardInspector(card.id, { target, context, contextIds: providedContextIds });
+    });
+  }
+
+  // Bind Prev/Next Navigation (these buttons live outside #inspector-content,
+  // so they aren't recreated by the innerHTML above — rebind with .onclick,
+  // which replaces any previous handler instead of stacking a new one).
+  const prevBtn = document.getElementById('btn-inspector-prev');
+  const nextBtn = document.getElementById('btn-inspector-next');
+  if (prevBtn) {
+    prevBtn.disabled = !hasPrev;
+    prevBtn.onclick = () => {
+      if (!hasPrev) return;
+      openCardInspector(contextIds[contextIndex - 1], { target, context, contextIds: providedContextIds });
+    };
+  }
+  if (nextBtn) {
+    nextBtn.disabled = !hasNext;
+    nextBtn.onclick = () => {
+      if (!hasNext) return;
+      openCardInspector(contextIds[contextIndex + 1], { target, context, contextIds: providedContextIds });
+    };
   }
 
   if (!modal.classList.contains('is-open')) modal.returnFocus = document.activeElement;

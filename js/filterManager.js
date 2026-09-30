@@ -6,7 +6,7 @@
 import { CARDS_DATA } from './cardsData.js';
 import { state, setCardScale, setFilter, resetFilters, addCardToDeck, canAddCardToDeck, getCombinedCardCount, getMaxAllowedCopies, isCardBanlisted, getDeckTotalCount } from './state.js';
 import { createCardElement, openCardInspector } from './cardInspector.js';
-import { playClick, playCardDrop } from './sound.js';
+import { playClick, playCardAddSfx } from './sound.js';
 import { showToast } from './app.js';
 
 export function initFilters() {
@@ -136,7 +136,7 @@ export function initFilters() {
     libraryGrid.addEventListener('click', (e) => {
       const cardWrapper = e.target.closest('.tcg-card-wrapper');
       if (cardWrapper && cardWrapper.dataset.cardId) {
-        openCardInspector(cardWrapper.dataset.cardId);
+        openCardInspector(cardWrapper.dataset.cardId, { context: 'library', contextIds: getVisibleLibraryCardIds() });
       }
     });
 
@@ -154,7 +154,7 @@ export function initFilters() {
       const check = canAddCardToDeck(cardId, target);
       if (check.allowed) {
         addCardToDeck(cardId, target);
-        playCardDrop();
+        playCardAddSfx();
         const card = CARDS_DATA.find(c => c.id === cardId);
         showToast(`Agregado: ${card ? card.name : 'Carta'} al ${target === 'side' ? 'Side Deck' : 'mazo'}`, 'success');
       } else {
@@ -180,14 +180,7 @@ const RARITY_WEIGHT = {
   Common: 1
 };
 
-export function renderLibrary() {
-  const libraryGrid = document.getElementById('library-grid');
-  const emptyState = document.getElementById('library-empty');
-  const filteredCountElem = document.getElementById('filtered-card-count');
-  const totalCountElem = document.getElementById('total-card-count');
-
-  if (!libraryGrid) return;
-
+function getFilteredSortedCards() {
   const { search, element, type, rarity, maxMana, sort } = state.filters;
 
   // Filter Cards (Exclude Token cards from main library grid unless explicitly filtered by type)
@@ -245,6 +238,8 @@ export function renderLibrary() {
         return a.name.localeCompare(b.name);
       case 'name-desc':
         return b.name.localeCompare(a.name);
+      case 'rarity-asc':
+        return (RARITY_WEIGHT[a.rarity] || 0) - (RARITY_WEIGHT[b.rarity] || 0) || a.cost - b.cost;
       case 'rarity-desc':
         return (RARITY_WEIGHT[b.rarity] || 0) - (RARITY_WEIGHT[a.rarity] || 0) || a.cost - b.cost;
       case 'attack-desc':
@@ -255,6 +250,26 @@ export function renderLibrary() {
         return 0;
     }
   });
+
+  return filtered;
+}
+
+// Exposes the Colección grid's current filtered + sorted card ids, in the same
+// order they're rendered in, so the inspector's prev/next navigation can walk
+// through exactly what the user is looking at.
+export function getVisibleLibraryCardIds() {
+  return getFilteredSortedCards().map(card => card.id);
+}
+
+export function renderLibrary() {
+  const libraryGrid = document.getElementById('library-grid');
+  const emptyState = document.getElementById('library-empty');
+  const filteredCountElem = document.getElementById('filtered-card-count');
+  const totalCountElem = document.getElementById('total-card-count');
+
+  if (!libraryGrid) return;
+
+  const filtered = getFilteredSortedCards();
 
   const nonTokenTotal = CARDS_DATA.filter(c => c.type !== 'Token' && !c.isToken).length;
   if (totalCountElem) totalCountElem.textContent = nonTokenTotal;

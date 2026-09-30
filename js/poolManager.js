@@ -1,9 +1,24 @@
 /**
  * BASE CARD POOL MANAGER
- * Builds the base card pool from the images shipped in cartas/SET-*, using the File
- * System Access API (window.showDirectoryPicker). This is separate from the custom
- * card importer: pool cards live in their own IndexedDB store ('pool_cards') so
- * "Borrar Cartas Personalizadas" never touches them.
+ * Builds the base card pool two ways:
+ *
+ * A) From the server (loadPoolFromServer, automatic): fetches cartas/pool-manifest.json
+ *    (a flat list of image paths) and cartas/catalogo-original.json, then references
+ *    each image by its plain relative URL (cartas/SET-N/archivo.webp) — no folder
+ *    picker, no per-image download at startup (the <img loading="lazy"> tag only
+ *    fetches a card's art when it actually scrolls into view). This is what makes
+ *    the base pool show up on any device (phones included) once the app + cartas/
+ *    folder are served over HTTP(S) (GitHub Pages, Netlify, a local dev server).
+ *    It does nothing (silently) when fetch() isn't usable — e.g. opened via file://,
+ *    or the manifest hasn't been generated yet — so file:// keeps working as before.
+ *    Run `node tests/generate-pool-manifest.cjs` after adding cards to a SET-N
+ *    folder so the manifest matches what's actually on disk.
+ *
+ * B) Using the File System Access API (window.showDirectoryPicker), kept for local
+ *    development: lets you point at a `cartas` folder anywhere on disk (e.g. before
+ *    committing new art) without waiting on the manifest. This is separate from the
+ *    custom card importer: pool cards live in their own IndexedDB store ('pool_cards')
+ *    so "Borrar Cartas Personalizadas" never touches them.
  *
  * Flow:
  * 1. First click on "Buscar Actualizaciones": the browser asks the user to pick the
@@ -11,13 +26,15 @@
  *    ('app_config') so future visits do not need to pick it again (only re-confirm
  *    permission, which the browser may still ask for).
  * 2. On every app load, initPoolCards() loads whatever was cached in 'pool_cards' on
- *    a previous scan — no folder access needed, exactly like the custom card importer.
+ *    a previous scan (no folder access needed), then runs loadPoolFromServer() to
+ *    pick up anything the manifest has that isn't cached yet.
  * 3. Clicking "Buscar Actualizaciones" again re-reads the linked folder and adds only
  *    the images not seen before (matched by their relative path), so adding a new
  *    SET-N folder and re-scanning is enough to pick it up.
  *
- * Browsers without showDirectoryPicker (Firefox, Safari) cannot use this feature; the
- * base pool must be added there with the regular "Importar Cartas" button instead.
+ * Browsers without showDirectoryPicker (Firefox, Safari, every mobile browser) simply
+ * don't get the "Buscar Actualizaciones" button's functionality — they still get the
+ * base pool via loadPoolFromServer() as long as the app is served over HTTP(S).
  */
 
 import { CARDS_DATA } from './cardsData.js';
@@ -105,20 +122,82 @@ function loadDirHandle() {
 }
 
 /** Loads whatever the base pool already has cached; called once on app startup, no folder access needed. */
-export function initPoolCards() {
-  return openDB()
-    .then(loadSavedPoolCards)
-    .then(cards => {
-      cards.forEach(card => {
-        if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
-      });
-      return cards;
-    })
-    .catch(() => []);
+export async function initPoolCards() {
+  let cachedCards = [];
+  try {
+    cachedCards = await openDB().then(loadSavedPoolCards);
+  } catch (err) {
+    cachedCards = [];
+  }
+  cachedCards.forEach(card => {
+    if (!CARDS_DATA.some(c => c.id === card.id)) CARDS_DATA.push(card);
+  });
+
+  await loadPoolFromServer();
+
+  return CARDS_DATA.filter(c => c.isPool);
 }
 
 export function isPoolUpdateSupported() {
   return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+}
+
+// ── Server-side loading (works on GitHub Pages, Netlify, any HTTP host, and on
+//    phones/browsers without showDirectoryPicker) ─────────────────────────────
+const MANIFEST_PATH = 'cartas/pool-manifest.json';
+const CATALOG_PATH = 'cartas/catalogo-original.json';
+
+async function fetchJSON(path) {
+  const res = await fetch(path, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/** Same shape as readCatalog(dirHandle), but fetched over HTTP instead of read from a picked folder. */
+async function loadCatalogFromServer() {
+  try {
+    const parsed = await fetchJSON(CATALOG_PATH);
+    const list = Array.isArray(parsed) ? parsed : (parsed.cards || []);
+    const map = new Map();
+    for (const entry of list) {
+      if (entry && typeof entry.archivo === 'string') {
+        map.set(entry.archivo.replace(/\\/g, '/'), entry);
+      }
+    }
+    return map;
+  } catch (err) {
+    return new Map(); // optional file: filename-only parsing still works without it
+  }
+}
+
+/**
+ * Builds the base pool from cartas/pool-manifest.json + the images already
+ * committed alongside the app, referencing each image by its plain relative URL
+ * (no download, no base64 conversion — the browser only fetches an image once it
+ * actually scrolls into view, same as any other <img loading="lazy">).
+ * Silently does nothing if the manifest can't be fetched: opened via file://,
+ * running on a host that doesn't serve cartas/, or the manifest doesn't exist yet.
+ */
+async function loadPoolFromServer() {
+  let manifest;
+  try {
+    manifest = await fetchJSON(MANIFEST_PATH);
+  } catch (err) {
+    return; // no manifest reachable: nothing to do, the folder-picker flow still works
+  }
+  if (!Array.isArray(manifest) || manifest.length === 0) return;
+
+  const catalog = await loadCatalogFromServer();
+  const known = new Set(CARDS_DATA.map(c => c.id));
+
+  for (const relPath of manifest) {
+    const id = 'pool_' + hashPath(relPath);
+    if (known.has(id)) continue;
+    const imageUrl = 'cartas/' + relPath;
+    const card = parsePoolCardFromPath(relPath, imageUrl, catalog.get(relPath));
+    CARDS_DATA.push(card);
+    known.add(card.id);
+  }
 }
 
 // ── Deterministic ids ─────────────────────────────────────────────────────────
@@ -160,7 +239,6 @@ const ELEMENT_MAP = {
   tierra: 'tierra', earth: 'tierra', terra: 'tierra', verde: 'tierra', green: 'tierra', naturaleza: 'tierra',
   saturno: 'saturno', saturn: 'saturno', morado: 'saturno', violeta: 'saturno', purple: 'saturno',
   mercurio: 'mercurio', mercury: 'mercurio', plata: 'mercurio', plateado: 'mercurio', silver: 'mercurio', gris: 'mercurio',
-  urano: 'urano', uranus: 'urano', cian: 'urano', celeste: 'urano', cyan: 'urano', hielo: 'urano',
   pluton: 'pluton', plutón: 'pluton', pluto: 'pluton', vacio: 'pluton', vacío: 'pluton', sombra: 'pluton', negro: 'pluton',
   arcano: 'neutral', neutral: 'neutral', incoloro: 'neutral', colorless: 'neutral'
 };

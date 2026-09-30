@@ -1,0 +1,167 @@
+/* Rise of Gods reference: midnight surfaces, coral actions and soft geometry.
+   Loaded last to keep presentation separate from card/faction rules and layout. */
+:root {
+  color-scheme: dark;
+  --bg-void: #11121d;
+  --bg-core: #171827;
+  --bg-surface: #1c1e30;
+  --bg-panel: #202237;
+  --bg-glass: #202237;
+  --bg-raised: #2a2d44;
+  --cyan: #ff6d89;
+  --cyan-dim: #f04a70;
+  --cyan-glow: rgba(240, 74, 112, .22);
+  --cyan-glow-sm: rgba(240, 74, 112, .12);
+  --text-cyan: #ff6d89;
+  --border-dim: #303249;
+  --border-soft: #3b3e56;
+  --border-active: #ff6d89;
+  --border-glow: #ff6d89;
+  --text-primary: #f7f7fb;
+  --text-secondary: #c1c3d3;
+  --text-muted: #a2a6bd;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-hud: var(--font-body);
+  --font-mono: ui-monospace, Consolas, monospace;
+  --clip-bevel: none;
+  --clip-bevel-sm: none;
+  --clip-bevel-lg: none;
+  --glow-cyan: 0 4px 16px rgba(240, 74, 112, .22);
+  --glow-panel: 0 8px 24px rgba(0, 0, 0, .18);
+}
+
+body { letter-spacing: normal; }
+.app-layout {
+  background: radial-gradient(ellipse at 12% 25%, #27243b 0, transparent 60%), var(--bg-core);
+  height: 100dvh;
+}
+.app-layout::before, .app-layout::after,
+.top-navbar::before, .deck-section::after, .library-sidebar::before,
+.library-header::after, .deck-header-panel::after, .deck-sub-header::after,
+.modal-backdrop::before, .modal-dialog::before { display: none; }
+
+.top-navbar { background: #1a1b2c; box-shadow: 0 3px 16px #0003; padding-block: 10px; }
+.brand-logo-gem {
+  background: #ed3e67;
+  border: 0;
+  border-radius: 10px;
+  clip-path: none;
+  box-shadow: 0 4px 14px #ed3e6733;
+}
+.gem-inner {
+  width: 15px;
+  height: 19px;
+  background: transparent;
+  border: 2px solid white;
+  border-radius: 3px;
+  clip-path: none;
+  transform: rotate(-12deg);
+  box-shadow: 4px 2px 0 -1px #ed3e67, 5px 2px 0 0 white;
+  animation: none;
+}
+.brand-title { color: white; font-size: 19px; letter-spacing: -.5px; text-shadow: none; }
+.brand-subtitle { color: var(--text-secondary); font-size: 10px; letter-spacing: 2px; }
+.deck-name-input { color: var(--text-primary); font-size: 13px; letter-spacing: normal; text-transform: none; }
+.deck-name-input:focus { background: var(--bg-raised); }
+.deck-status-badge { clip-path: none; border-radius: 20px; letter-spacing: .3px; }
+.deck-status-badge.is-ready { animation: none; box-shadow: none; }
+
+.btn { border-radius: 8px; text-transform: none; letter-spacing: .1px; font-size: 12px; }
+.btn-primary { background: #d92d55; border-color: #ee5476; color: white; box-shadow: 0 4px 12px #ed3e6726; }
+.btn-primary:hover:not(:disabled) { background: #bf2448; border-color: #ff7894; box-shadow: var(--glow-cyan); }
+.btn-secondary { background: #27293e; color: #eeeef6; border-color: #43465c; }
+.btn-secondary:hover:not(:disabled) { background: #353850; border-color: #9195ae; }
+.btn-ghost:hover { background: var(--bg-raised); }
+.btn-danger { color: #ff91a5; background: #e6406414; border-color: #e640644d; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-link { color: #ff8ca3; border-bottom-color: #ff8ca355; }
+
+.deck-section { background: transparent; }
+.deck-header-panel, .library-header { background: #202237; }
+.library-sidebar { background: #191b2b; box-shadow: -4px 0 20px #0002; }
+.box-title, .filter-group-label { color: var(--text-secondary); letter-spacing: .5px; }
+.section-title, .sub-title { color: var(--text-primary); letter-spacing: .5px; text-shadow: none; }
+.section-title { font-size: 15px; text-transform: none; }
+.sub-title { text-transform: none; font-size: 12px; }
+.avg-mana, .mana-bar-count, .library-count-badge span { text-shadow: none; }
+.type-pill, .planet-dot-badge, .library-count-badge,
+.deck-count-pill, .extra-tokens-pill {
+  clip-path: none;
+  border-radius: 6px;
+  letter-spacing: normal;
+}
+.type-pill, .library-count-badge, .zoom-slider-wrapper { background: #ffffff08; }
+.type-pill { text-transform: none; }
+.mana-bar-track { background: #ffffff08; border-color: #ffffff12; border-radius: 3px 3px 0 0; }
+.mana-bar-fill { box-shadow: none; border-radius: 3px 3px 0 0; }
+.deck-dropzone-container { border-radius: 12px; background: #ffffff03; }
+.deck-empty-state {
+  background: radial-gradient(ellipse at center, #f04a700d, transparent 75%);
+  border: 1px dashed #656079;
+  border-radius: 12px;
+}
+.deck-empty-state h3 { text-transform: none; letter-spacing: -.3px; font-size: 20px; }
+.deck-empty-state p { max-width: 470px; }
+.extra-deck-section, .side-deck-section { background: #212033; border-radius: 10px; border-color: var(--border-soft); box-shadow: none; }
+.extra-deck-section::before { display: none; }
+.extra-deck-title { color: #d3c4ed; text-shadow: none; letter-spacing: .5px; text-transform: none; }
+.extra-auto-badge { clip-path: none; border-radius: 4px; color: #d3c4ed; }
+.deck-drop-highlight { background: #f04a7014; border-radius: 12px; }
+.drop-message { background: var(--bg-panel); border-radius: 8px; }
+
+.filter-search-input, .custom-select, .deck-name-input,
+.zoom-slider-wrapper, .pill-filter-btn, .element-btn,
+.banlist-limit-input { border-radius: 7px; }
+.filter-search-input, .custom-select, .banlist-limit-input {
+  background: #151725;
+  color: var(--text-primary);
+  letter-spacing: normal;
+  font-size: 12px;
+}
+.custom-select option { background: #202237; }
+.filter-search-input { height: 36px; }
+.filters-panel { background: #191b2b; border-radius: 10px; }
+.pill-filter-btn { background: #ffffff06; letter-spacing: normal; clip-path: none; }
+.pill-filter-btn.active { background: #f04a7026; color: #ff9aaf; border-color: #f04a7080; box-shadow: none; }
+.element-btn { clip-path: none; }
+.range-slider { background: #48425b; border-radius: 8px; }
+.range-slider::-webkit-slider-thumb { border-radius: 50%; clip-path: none; box-shadow: none; }
+.library-empty-collection h3 { color: white; text-shadow: none; letter-spacing: normal; text-transform: none; }
+.library-empty-collection .empty-icon-shield { filter: none; animation: none; }
+
+.modal-backdrop { background: #0b0c16cc; }
+.modal-dialog { background: #202237; border-radius: 16px; box-shadow: 0 24px 80px #0008; }
+.modal-header, .modal-footer { background: #ffffff03; }
+.modal-title { text-shadow: none; color: white; letter-spacing: .2px; }
+.export-textarea { background: #141624; border-radius: 8px; }
+.import-drop-area { background: #f04a7008; border-radius: 12px; }
+.saved-deck-row, .banlist-row, .banlist-active-row, .preview-chip { background: #ffffff05; border-radius: 8px; }
+.toast { background: #2a2d44; border-radius: 10px; }
+::-webkit-scrollbar-thumb { border-radius: 8px; box-shadow: none; background: #5d607c; }
+:is(button, input, select, textarea, a):focus-visible {
+  outline: 2px solid #ff93aa;
+  outline-offset: 3px;
+}
+
+/* Keep the editor usable on narrow screens without compressing both columns. */
+@media (max-width: 760px) {
+  .app-layout { height: auto; min-height: 100dvh; overflow: visible; }
+  body { overflow: auto; }
+  .main-workspace { display: flex; flex-direction: column; overflow: visible; flex: none; }
+  .deck-section { height: 760px; flex: none; border-right: 0; }
+  .library-sidebar { height: 720px; flex: none; border-left: 0; border-top: 1px solid var(--border-soft); }
+  .analytics-row { grid-template-columns: 1fr; gap: 8px; }
+  .deck-composition-box { min-width: 0; }
+  .sub-tip { display: none; }
+  .nav-actions { justify-content: flex-start; }
+  .top-navbar { gap: 10px; }
+  .brand-text { display: block; }
+  .brand-title { font-size: 16px; }
+  .nav-brand { gap: 8px; }
+  .deck-sub-header-right { gap: 5px; }
+  .side-deck-empty-state { padding: 4px 8px; }
+  .deck-empty-state h3 { font-size: 17px; }
+  .extra-deck-desc { display: none; }
+  .modal-backdrop { padding: 10px; }
+  .modal-dialog { max-height: 92dvh; }
+}

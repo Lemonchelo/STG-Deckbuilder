@@ -270,7 +270,6 @@
 .element-btn[data-element="tierra"].active   { color: var(--color-tierra);   box-shadow: 0 0 10px var(--color-tierra-glow);   background: rgba(0,255,136,0.10); }
 .element-btn[data-element="saturno"].active  { color: var(--color-saturno);  box-shadow: 0 0 10px var(--color-saturno-glow);  background: rgba(187,102,255,0.12);}
 .element-btn[data-element="mercurio"].active { color: var(--color-mercurio); box-shadow: 0 0 10px var(--color-mercurio-glow); background: rgba(200,216,232,0.08);}
-.element-btn[data-element="urano"].active    { color: var(--color-urano);    box-shadow: 0 0 10px var(--color-urano-glow);    background: rgba(0,245,255,0.10); }
 .element-btn[data-element="pluton"].active   { color: var(--color-pluton);   box-shadow: 0 0 10px var(--color-pluton-glow);   background: rgba(255,0,153,0.10); }
 
 /* ── Type Filter Buttons ─────────────────────────────────────────────────── */

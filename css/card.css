@@ -68,10 +68,6 @@
   --planet-color: var(--color-mercurio);
   --planet-glow: var(--color-mercurio-glow);
 }
-.tcg-card[data-element="urano"] {
-  --planet-color: var(--color-urano);
-  --planet-glow: var(--color-urano-glow);
-}
 .tcg-card[data-element="pluton"] {
   --planet-color: var(--color-pluton);
   --planet-glow: var(--color-pluton-glow);
