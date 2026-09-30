@@ -137,6 +137,13 @@ function escapeHtml(value) {
     return CARDS_DATA.find(c => c.id === id);
   }
 
+  // Búsqueda exacta por nombre (sin distinguir mayúsculas/espacios extremos), para archivos
+  // como cartas/banlist-default.json que identifican cartas por nombre en vez de id interno.
+  function getCardByName(name) {
+    const q = String(name).trim().toLowerCase();
+    return CARDS_DATA.find(c => c.name.trim().toLowerCase() === q);
+  }
+
   // ==========================================================================
   // 2. CUSTOM CARDS IMPORT ENGINE & INDEXED-DB
   // ==========================================================================
@@ -395,6 +402,7 @@ function escapeHtml(value) {
   // ==========================================================================
   const STORAGE_KEY = 'aetherium_tcg_active_deck';
   const STORAGE_KEY_BANLIST = 'aetherium_tcg_banlist';
+  const STORAGE_KEY_BANLIST_IGNORED = 'aetherium_tcg_banlist_ignored_defaults';
 
   const RARITY_LIMITS = {
     Common: 4,
@@ -489,6 +497,25 @@ function escapeHtml(value) {
     } catch (err) {}
   }
 
+  // Nombres (en minúscula) de cartas que el usuario quitó explícitamente de su banlist:
+  // cartas/banlist-default.json no las vuelve a aplicar, aunque las siga listando.
+  let ignoredDefaultBanlist = new Set();
+
+  function saveIgnoredDefaultBanlist() {
+    try {
+      localStorage.setItem(STORAGE_KEY_BANLIST_IGNORED, JSON.stringify([...ignoredDefaultBanlist]));
+    } catch (err) {}
+  }
+
+  function loadIgnoredDefaultBanlist() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_BANLIST_IGNORED);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) ignoredDefaultBanlist = new Set(parsed.filter(n => typeof n === 'string'));
+    } catch (err) {}
+  }
+
   function isValidDeckItem(item) {
     const card = item && getCardById(item.cardId);
     return !!(item && Number.isSafeInteger(item.count) && item.count > 0 && card && card.type !== 'Token' && !card.isToken);
@@ -496,6 +523,7 @@ function escapeHtml(value) {
 
   function loadInitialState() {
     loadBanlistFromLocalStorage();
+    loadIgnoredDefaultBanlist();
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -562,8 +590,56 @@ function escapeHtml(value) {
   function clearBanlistLimit(cardId) {
     if (state.banlist[cardId] === undefined) return;
     delete state.banlist[cardId];
+    const card = getCardById(cardId);
+    if (card) {
+      ignoredDefaultBanlist.add(card.name.trim().toLowerCase());
+      saveIgnoredDefaultBanlist();
+    }
     saveBanlistToLocalStorage();
     notifyBanlistChanged();
+  }
+
+  /**
+   * Aplica cartas/banlist-default.json: límites predefinidos en el repo para quien
+   * todavía no tiene banlist propia guardada. Nunca pisa un límite que el usuario ya
+   * haya fijado (setBanlistLimit) ni una carta que haya quitado explícitamente
+   * (clearBanlistLimit) — eso siempre gana, hoy y en cualquier visita futura.
+   * `entries` es { [nombre de carta]: límite }; los nombres que no existen en el pool
+   * actual, o que ya tienen un valor propio, se ignoran en silencio.
+   */
+  function applyDefaultBanlistEntries(entries) {
+    if (!entries || typeof entries !== 'object') return;
+    let changed = false;
+    for (const [name, limit] of Object.entries(entries)) {
+      const key = String(name).trim().toLowerCase();
+      if (ignoredDefaultBanlist.has(key)) continue;
+      const card = getCardByName(name);
+      if (!card || card.type === 'Token' || card.isToken) continue;
+      if (state.banlist[card.id] !== undefined) continue;
+      const n = Number(limit);
+      if (!Number.isSafeInteger(n) || n < 0 || n > state.maxDeckSize) continue;
+      state.banlist[card.id] = n;
+      changed = true;
+    }
+    if (changed) {
+      saveBanlistToLocalStorage();
+      notifyBanlistChanged();
+    }
+  }
+
+  // Lee cartas/banlist-default.json por fetch() (igual que pool-manifest.json y
+  // sound-manifest.json: GitHub Pages no permite listar ni ejecutar nada del lado del
+  // servidor). Si el archivo no existe o falla (por ejemplo file://), no pasa nada:
+  // la app sigue funcionando solo con la banlist propia del usuario.
+  async function loadDefaultBanlist(path = 'cartas/banlist-default.json') {
+    try {
+      const res = await fetch(path, { cache: 'no-cache' });
+      if (!res.ok) return;
+      const entries = await res.json();
+      applyDefaultBanlistEntries(entries);
+    } catch (err) {
+      // file:// o archivo ausente: sin banlist predefinida
+    }
   }
 
   function getMaxAllowedCopies(cardId) {
@@ -3763,6 +3839,7 @@ function initCardInspector() {
 
     // 2. Load Active Deck State
     loadInitialState();
+    await loadDefaultBanlist(); // cartas/banlist-default.json: límites predefinidos por el repo
 
     // 3. Initialize UI Subsystems
     initDeckView();

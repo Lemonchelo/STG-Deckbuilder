@@ -7,10 +7,11 @@
  * Banlist: persistent per-card copy limit override (replaces the rarity default).
  */
 
-import { CARDS_DATA, getCardById } from './cardsData.js';
+import { CARDS_DATA, getCardById, getCardByName } from './cardsData.js';
 
 const STORAGE_KEY = 'aetherium_tcg_active_deck';
 const STORAGE_KEY_BANLIST = 'aetherium_tcg_banlist';
+const STORAGE_KEY_BANLIST_IGNORED = 'aetherium_tcg_banlist_ignored_defaults';
 
 export const RARITY_LIMITS = {
   Common: 4,
@@ -105,6 +106,25 @@ function loadBanlistFromLocalStorage() {
   } catch (err) {}
 }
 
+// Nombres (en minúscula) de cartas que el usuario quitó explícitamente de su banlist:
+// cartas/banlist-default.json no las vuelve a aplicar, aunque las siga listando.
+let ignoredDefaultBanlist = new Set();
+
+function saveIgnoredDefaultBanlist() {
+  try {
+    localStorage.setItem(STORAGE_KEY_BANLIST_IGNORED, JSON.stringify([...ignoredDefaultBanlist]));
+  } catch (err) {}
+}
+
+function loadIgnoredDefaultBanlist() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_BANLIST_IGNORED);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) ignoredDefaultBanlist = new Set(parsed.filter(n => typeof n === 'string'));
+  } catch (err) {}
+}
+
 function isValidDeckItem(item) {
   const card = item && getCardById(item.cardId);
   // Tokens cannot be in the main or side deck, and cards must exist in CARDS_DATA
@@ -113,6 +133,7 @@ function isValidDeckItem(item) {
 
 export function loadInitialState() {
   loadBanlistFromLocalStorage();
+  loadIgnoredDefaultBanlist();
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -195,8 +216,56 @@ export function setBanlistLimit(cardId, limit) {
 export function clearBanlistLimit(cardId) {
   if (state.banlist[cardId] === undefined) return;
   delete state.banlist[cardId];
+  const card = getCardById(cardId);
+  if (card) {
+    ignoredDefaultBanlist.add(card.name.trim().toLowerCase());
+    saveIgnoredDefaultBanlist();
+  }
   saveBanlistToLocalStorage();
   notifyBanlistChanged();
+}
+
+/**
+ * Aplica cartas/banlist-default.json: límites predefinidos en el repo para quien
+ * todavía no tiene banlist propia guardada. Nunca pisa un límite que el usuario ya
+ * haya fijado (setBanlistLimit) ni una carta que haya quitado explícitamente
+ * (clearBanlistLimit) — eso siempre gana, hoy y en cualquier visita futura.
+ * `entries` es { [nombre de carta]: límite }; los nombres que no existen en el pool
+ * actual, o que ya tienen un valor propio, se ignoran en silencio.
+ */
+export function applyDefaultBanlistEntries(entries) {
+  if (!entries || typeof entries !== 'object') return;
+  let changed = false;
+  for (const [name, limit] of Object.entries(entries)) {
+    const key = String(name).trim().toLowerCase();
+    if (ignoredDefaultBanlist.has(key)) continue;
+    const card = getCardByName(name);
+    if (!card || card.type === 'Token' || card.isToken) continue;
+    if (state.banlist[card.id] !== undefined) continue;
+    const n = Number(limit);
+    if (!Number.isSafeInteger(n) || n < 0 || n > state.maxDeckSize) continue;
+    state.banlist[card.id] = n;
+    changed = true;
+  }
+  if (changed) {
+    saveBanlistToLocalStorage();
+    notifyBanlistChanged();
+  }
+}
+
+// Lee cartas/banlist-default.json por fetch() (igual que pool-manifest.json y
+// sound-manifest.json: GitHub Pages no permite listar ni ejecutar nada del lado del
+// servidor). Si el archivo no existe o falla (por ejemplo file://), no pasa nada:
+// la app sigue funcionando solo con la banlist propia del usuario.
+export async function loadDefaultBanlist(path = 'cartas/banlist-default.json') {
+  try {
+    const res = await fetch(path, { cache: 'no-cache' });
+    if (!res.ok) return;
+    const entries = await res.json();
+    applyDefaultBanlistEntries(entries);
+  } catch (err) {
+    // file:// o archivo ausente: sin banlist predefinida
+  }
 }
 
 /**

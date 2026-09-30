@@ -3,7 +3,7 @@ import { escapeHtml } from './cardsData.js';
  * AETHERIUM TCG DECKBUILDER - APPLICATION BOOTSTRAP
  */
 
-import { state, loadInitialState, subscribeToDeck, subscribeToFilters, subscribeToBanlist, clearDeck, exportDeckToText, exportDeckToJSON, exportDeckToOfficialFormat, importDeckFromText, importDeckFromJSON, importDeckFromOfficialFormat } from './state.js';
+import { state, loadInitialState, loadDefaultBanlist, subscribeToDeck, subscribeToFilters, subscribeToBanlist, clearDeck, exportDeckToText, exportDeckToJSON, exportDeckToOfficialFormat, importDeckFromText, importDeckFromJSON, importDeckFromOfficialFormat } from './state.js';
 import { initCardInspector } from './cardInspector.js';
 import { initDeckView, renderDeck } from './deckManager.js';
 import { initFilters, renderLibrary } from './filterManager.js';
@@ -414,6 +414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2. Load Stored Data
   loadInitialState();
+  await loadDefaultBanlist(); // cartas/banlist-default.json: límites predefinidos por el repo
 
   // 3. Initialize Views and Controllers
   initVolumeControl();

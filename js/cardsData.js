@@ -125,6 +125,13 @@ export function getCardById(id) {
   return CARDS_DATA.find(c => c.id === id);
 }
 
+// Búsqueda exacta por nombre (sin distinguir mayúsculas/espacios extremos), para archivos
+// como cartas/banlist-default.json que identifican cartas por nombre en vez de id interno.
+export function getCardByName(name) {
+  const q = String(name).trim().toLowerCase();
+  return CARDS_DATA.find(c => c.name.trim().toLowerCase() === q);
+}
+
 export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
 }

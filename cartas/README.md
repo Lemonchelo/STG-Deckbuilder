@@ -10,6 +10,37 @@ En la aplicación, seleccioná **Importar Cartas → Seleccionar Carpeta** y ele
 
 Después de agregar o sacar imágenes de `SET-N/`, corré `node tests/generate-pool-manifest.cjs` y commiteá el `pool-manifest.json` actualizado junto con las imágenes. Si te olvidás, la app servida por HTTP sigue mostrando la pool anterior — nada se rompe, pero las cartas nuevas no aparecen hasta regenerarlo.
 
+## Banlist predefinida (`banlist-default.json`)
+
+`cartas/banlist-default.json` fija de antemano límites de copias por carta para
+quien todavía no tenga una banlist propia guardada en el navegador — pensado para
+publicar un formato competitivo (o cualquier lista de restricciones) sin que cada
+usuario tenga que cargarla a mano desde el botón "Banlist".
+
+Es un objeto plano `{ "Nombre de la carta": límite }`, con el nombre tal como se
+muestra en la app (espacios, no guiones — ver "Formatos" más abajo) y el límite
+como entero entre 0 (prohibida) y el tamaño máximo de mazo. Por ejemplo:
+
+```json
+{
+  "Avaricia": 1,
+  "Cañón de Zagh": 0
+}
+```
+
+Se edita a mano — no hay que regenerarlo con ningún script — y se commitea junto
+con el resto de los cambios. `js/state.js` (`loadDefaultBanlist`) lo lee por
+`fetch()` al arrancar, igual que `pool-manifest.json`: si el archivo falta o
+`index.html` se abre con `file://`, la app sigue funcionando solo con la banlist
+propia de cada usuario.
+
+Un límite de acá **nunca pisa** lo que el usuario ya haya definido: si alguien fija
+su propio límite para una carta, o la quita explícitamente de su banlist activa,
+esa decisión queda guardada en su navegador y gana siempre, incluso si después se
+suma o se cambia esa misma carta en este archivo. Los nombres que no coinciden con
+ninguna carta del pool actual, o que ya tienen un valor propio, se ignoran en
+silencio.
+
 ## Formatos
 
 - 438 cartas estándar: `Nombre_Tipo_Rareza_Faccion_ATK_DEF_Coste.webp`. El coste es el total de sellos de facción más coste neutral.
