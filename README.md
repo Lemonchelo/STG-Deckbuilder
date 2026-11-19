@@ -236,15 +236,25 @@ El botón **🔄 Buscar Actualizaciones** (barra superior) carga la pool base de
 3. La app recorre todas las subcarpetas, interpreta cada imagen con el mismo formato de nombre de archivo que **Importar Cartas** (ver [Formato de nombre de archivo](#formato-de-nombre-de-archivo)), y si existe `catalogo-original.json` en la raíz de esa carpeta, lo usa para completar la descripción y el texto de ambientación de las cartas que coincidan — nunca para cambiar su tipo, rareza, planeta o estadísticas, que siempre salen del nombre del archivo.
 4. Las cartas quedan guardadas en el navegador (en IndexedDB, aparte de tus cartas personalizadas). **No hace falta repetir este paso en cada apertura**: la próxima vez que abras la app, la pool base ya está ahí.
 
-### Buscar cartas nuevas (sets agregados después)
+### Agregar un set nuevo (flujo automático)
 
-Si el proyecto suma una carpeta `SET-N` nueva, alcanza con volver a hacer clic en **🔄 Buscar Actualizaciones**. La app vuelve a leer la carpeta vinculada y agrega solo las imágenes que no había visto antes (compara por su ruta relativa, por ejemplo `SET-7/Carta_Criatura_Rara_Marte_2_2_2.webp`). Si no hay nada nuevo, te avisa que la pool ya está actualizada.
+Para incorporar cartas a la versión publicada, creá una carpeta `cartas/SET-N` (por ejemplo, `SET-8`) y colocá las imágenes directamente dentro. No hace falta editar `pool-manifest.json` ni ejecutar comandos manualmente.
+
+Al subir los cambios a la rama `main`, GitHub Actions ejecuta `tests/generate-pool-manifest.cjs`, detecta las imágenes de todas las carpetas `SET-N` y genera el manifest antes de publicar GitHub Pages. También informa nombres de archivo que podrían impedir interpretar correctamente una carta; esas imágenes se incluyen igualmente, pero conviene corregir los avisos.
+
+El workflow se puede ejecutar manualmente desde **GitHub → Actions → Build and deploy GitHub Pages → Run workflow**. Para usar este despliegue automático, en **Settings → Pages → Build and deployment** seleccioná **GitHub Actions** como source.
+
+En desarrollo local, si querés probar las cartas desde un servidor HTTP antes de subirlas, ejecutá `node tests/generate-pool-manifest.cjs` desde la raíz del proyecto.
+
+### Buscar cartas nuevas desde la app
+
+El botón **🔄 Buscar Actualizaciones** sigue disponible para escanear una carpeta `cartas` local desde Chrome o Edge. Agrega solo las imágenes que todavía no estaban en la pool (compara por su ruta relativa, por ejemplo `SET-7/Carta_Criatura_Rara_Marte_2_2_2.webp`).
 
 Cada carta de la pool tiene un identificador que sale de su ruta de archivo, no al azar: la misma imagen conserva siempre el mismo identificador entre reinicios y actualizaciones, así que un mazo que ya armaste no se rompe cuando aparece un set nuevo.
 
 ### Limitaciones
 
-- Esta función usa una API del navegador (`showDirectoryPicker`) disponible en **Chrome y Edge**, no en Firefox ni Safari. En esos navegadores, el botón avisa que no está disponible; la pool base ahí se carga con **Importar Cartas**, seleccionando manualmente la carpeta `cartas`.
+- Esta función usa una API del navegador (`showDirectoryPicker`) disponible en **Chrome y Edge**, no en Firefox ni Safari. En esos navegadores, el botón avisa que no está disponible. La pool base igualmente se carga desde el manifest cuando la app está publicada y se abre por HTTP(S); la selección manual mediante **Importar Cartas** sigue disponible para cartas propias.
 - El navegador puede volver a pedir el permiso de la carpeta en algún momento (por ejemplo, si lo revocaste desde su configuración). En ese caso, el próximo clic en el botón simplemente vuelve a pedir la carpeta.
 - Las cartas de la pool base no se pueden borrar con **Borrar Cartas Personalizadas** (ese botón es solo para tus imágenes importadas a mano). Por ahora, quitarlas requiere borrar los datos del sitio en el navegador.
 

@@ -11,8 +11,8 @@
  *    folder are served over HTTP(S) (GitHub Pages, Netlify, a local dev server).
  *    It does nothing (silently) when fetch() isn't usable — e.g. opened via file://,
  *    or the manifest hasn't been generated yet — so file:// keeps working as before.
- *    Run `node tests/generate-pool-manifest.cjs` after adding cards to a SET-N
- *    folder so the manifest matches what's actually on disk.
+ *    GitHub Actions generates the manifest automatically before publishing.
+ *    Run the generator locally only when testing new cards over HTTP.
  *
  * B) Using the File System Access API (window.showDirectoryPicker), kept for local
  *    development: lets you point at a `cartas` folder anywhere on disk (e.g. before
